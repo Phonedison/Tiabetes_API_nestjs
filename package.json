@@ -22,6 +22,7 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
   },
   "dependencies": {
+    "@fastify/jwt": "^10.2.5",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
     "@nestjs/mapped-types": "*",
