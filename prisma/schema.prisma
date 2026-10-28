@@ -1,0 +1,486 @@
+generator client {
+  provider        = "postgres"
+  previewFeatures = ["partialIndexes"]
+  url             = env("DATABASE_URL")
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model alert_recipients {
+  id                      String                    @id @db.Uuid
+  alert_id                String                    @db.Uuid
+  user_id                 String                    @db.Uuid
+  read_at                 DateTime?                 @db.Timestamptz(6)
+  created_at              DateTime                  @default(now()) @db.Timestamptz(6)
+  alerts                  alerts                    @relation(fields: [alert_id], references: [id], onDelete: Cascade)
+  users                   users                     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  notification_deliveries notification_deliveries[]
+
+  @@unique([alert_id, user_id], map: "unique_alert_recipient")
+  @@index([user_id, read_at], map: "idx_alert_recipients_user_read")
+}
+
+model alerts {
+  id                String                 @id @db.Uuid
+  patient_id        String                 @db.Uuid
+  type              alert_type_enum
+  severity          alert_severity_enum
+  message           String
+  source_type       alert_source_type_enum
+  source_id         String?                @db.VarChar(100)
+  deduplication_key String                 @unique @db.VarChar(255)
+  triggered_at      DateTime               @default(now()) @db.Timestamptz(6)
+  alert_recipients  alert_recipients[]
+  patient_profiles  patient_profiles       @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+
+  @@index([patient_id, triggered_at(sort: Desc)], map: "idx_alerts_patient_date")
+}
+
+model audit_logs {
+  id              String                   @id @db.Uuid
+  actor_user_id   String                   @db.Uuid
+  actor_user_type user_type_enum
+  patient_id      String?                  @db.Uuid
+  action          audit_action_enum
+  resource_type   audit_resource_type_enum
+  resource_id     String?                  @db.VarChar(100)
+  outcome         audit_outcome_enum
+  request_id      String?                  @db.VarChar(100)
+  ip_address      String?                  @db.VarChar(64)
+  user_agent      String?                  @db.VarChar(500)
+  metadata        Json?
+  occurred_at     DateTime                 @default(now()) @db.Timestamptz(6)
+
+  @@index([action, occurred_at(sort: Desc)], map: "idx_audit_action_date")
+  @@index([actor_user_id, occurred_at(sort: Desc)], map: "idx_audit_actor_date")
+  @@index([patient_id, occurred_at(sort: Desc)], map: "idx_audit_patient_date")
+}
+
+model doctor_patient {
+  id               String                     @id @db.Uuid
+  doctor_id        String                     @db.Uuid
+  patient_id       String                     @db.Uuid
+  status           doctor_patient_status_enum @default(PENDING)
+  accepted_at      DateTime?                  @db.Timestamptz(6)
+  revoked_at       DateTime?                  @db.Timestamptz(6)
+  created_at       DateTime                   @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime                   @db.Timestamptz(6)
+  doctor_profiles  doctor_profiles            @relation(fields: [doctor_id], references: [id], onDelete: Cascade)
+  patient_profiles patient_profiles           @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+  treatment_plans  treatment_plans[]
+
+  @@unique([doctor_id, patient_id], map: "unique_doctor_patient")
+  @@index([doctor_id, status], map: "idx_doctor_patient_doctor_status")
+  @@index([patient_id, status], map: "idx_doctor_patient_patient_status")
+}
+
+model doctor_profiles {
+  id              String            @id @db.Uuid
+  user_id         String            @unique @db.Uuid
+  full_name       String            @db.VarChar(255)
+  crm             String            @unique @db.VarChar(30)
+  specialty       String?           @db.VarChar(100)
+  created_at      DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime          @db.Timestamptz(6)
+  doctor_patient  doctor_patient[]
+  users           users             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  treatment_plans treatment_plans[]
+}
+
+model foods {
+  id                String          @id @db.Uuid
+  name              String          @db.VarChar(150)
+  carbs_per_100g    Decimal         @db.Decimal(5, 2)
+  calories_per_100g Decimal?        @db.Decimal(6, 2)
+  meal_items        meal_items[]
+  portion_units     portion_units[]
+}
+
+model glucose_logs {
+  id               String               @id @db.Uuid
+  patient_id       String               @db.Uuid
+  glucose_value    Int
+  context          glucose_context_enum
+  measured_at      DateTime             @db.Timestamptz(6)
+  notes            String?
+  created_at       DateTime             @default(now()) @db.Timestamptz(6)
+  patient_profiles patient_profiles     @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+
+  @@index([patient_id, measured_at(sort: Desc)], map: "idx_glucose_logs_patient_date")
+}
+
+model insulin_logs {
+  id                 String           @id @db.Uuid
+  patient_id         String           @db.Uuid
+  patient_insulin_id String           @db.Uuid
+  units_applied      Decimal          @db.Decimal(6, 2)
+  applied_at         DateTime         @db.Timestamptz(6)
+  notes              String?
+  created_at         DateTime         @default(now()) @db.Timestamptz(6)
+  patient_profiles   patient_profiles @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+  patient_insulins   patient_insulins @relation(fields: [patient_insulin_id], references: [id])
+
+  @@index([patient_id, applied_at(sort: Desc)], map: "idx_insulin_logs_patient_date")
+}
+
+model insulins {
+  id                                  String                                @id @db.Uuid
+  name                                String                                @db.VarChar(100)
+  category                            insulin_category_enum
+  brand                               String?                               @db.VarChar(100)
+  patient_insulins                    patient_insulins[]
+  treatment_plan_insulin_instructions treatment_plan_insulin_instructions[]
+}
+
+model meal_items {
+  id                   String         @id @db.Uuid
+  meal_log_id          String         @db.Uuid
+  food_id              String?        @db.Uuid
+  portion_unit_id      String?        @db.Uuid
+  quantity             Decimal        @db.Decimal(8, 2)
+  calculated_carbs     Decimal        @db.Decimal(8, 2)
+  calories             Decimal?       @db.Decimal(8, 2)
+  cholesterol_mg       Decimal?       @db.Decimal(10, 2)
+  created_at           DateTime       @default(now()) @db.Timestamptz(6)
+  fat_saturated_g      Decimal?       @db.Decimal(8, 2)
+  fat_total_g          Decimal?       @db.Decimal(8, 2)
+  fat_trans_g          Decimal?       @db.Decimal(8, 2)
+  fiber_g              Decimal?       @db.Decimal(8, 2)
+  household_measure    String         @db.VarChar(40)
+  measure_was_assumed  Boolean        @default(false)
+  normalized_food_name String         @db.VarChar(150)
+  nutrition_provider   String         @db.VarChar(50)
+  original_description String         @db.VarChar(255)
+  potassium_mg         Decimal?       @db.Decimal(10, 2)
+  protein_g            Decimal?       @db.Decimal(8, 2)
+  provider_food_name   String         @db.VarChar(150)
+  serving_size_g       Decimal        @db.Decimal(8, 2)
+  sodium_mg            Decimal?       @db.Decimal(10, 2)
+  sugar_g              Decimal?       @db.Decimal(8, 2)
+  foods                foods?         @relation(fields: [food_id], references: [id], onDelete: Restrict)
+  meal_logs            meal_logs      @relation(fields: [meal_log_id], references: [id], onDelete: Cascade)
+  portion_units        portion_units? @relation(fields: [portion_unit_id], references: [id], onDelete: Restrict)
+}
+
+model meal_logs {
+  id               String           @id @db.Uuid
+  patient_id       String           @db.Uuid
+  meal_type        meal_type_enum
+  total_carbs      Decimal          @default(0) @db.Decimal(8, 2)
+  eaten_at         DateTime         @db.Timestamptz(6)
+  notes            String?
+  created_at       DateTime         @default(now()) @db.Timestamptz(6)
+  meal_items       meal_items[]
+  patient_profiles patient_profiles @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+
+  @@index([patient_id, eaten_at(sort: Desc)], map: "idx_meal_logs_patient_date")
+}
+
+model notification_deliveries {
+  id                   String                            @id @db.Uuid
+  alert_recipient_id   String                            @db.Uuid
+  channel              notification_channel_enum
+  push_installation_id String?                           @db.Uuid
+  status               notification_delivery_status_enum @default(PENDING)
+  attempts             Int                               @default(0)
+  deduplication_key    String                            @unique @db.VarChar(255)
+  provider             String?                           @db.VarChar(50)
+  provider_message_id  String?                           @db.VarChar(255)
+  sent_at              DateTime?                         @db.Timestamptz(6)
+  last_error           String?
+  created_at           DateTime                          @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime                          @db.Timestamptz(6)
+  alert_recipients     alert_recipients                  @relation(fields: [alert_recipient_id], references: [id], onDelete: Cascade)
+  push_installations   push_installations?               @relation(fields: [push_installation_id], references: [id])
+
+  @@index([status, created_at], map: "idx_notification_delivery_status")
+}
+
+model notification_preferences {
+  user_id       String   @id @db.Uuid
+  email_enabled Boolean  @default(false)
+  push_enabled  Boolean  @default(false)
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime @db.Timestamptz(6)
+  users         users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model outbox_events {
+  id                String             @id @db.Uuid
+  event_name        String             @db.VarChar(150)
+  aggregate_type    String             @db.VarChar(100)
+  aggregate_id      String             @db.VarChar(100)
+  deduplication_key String             @unique @db.VarChar(255)
+  payload           Json
+  status            outbox_status_enum @default(PENDING)
+  attempts          Int                @default(0)
+  max_attempts      Int                @default(8)
+  available_at      DateTime           @default(now()) @db.Timestamptz(6)
+  locked_at         DateTime?          @db.Timestamptz(6)
+  locked_by         String?            @db.VarChar(150)
+  processed_at      DateTime?          @db.Timestamptz(6)
+  last_error        String?
+  occurred_at       DateTime           @db.Timestamptz(6)
+  created_at        DateTime           @default(now()) @db.Timestamptz(6)
+
+  @@index([aggregate_type, aggregate_id], map: "idx_outbox_aggregate")
+  @@index([status, available_at], map: "idx_outbox_status_available")
+}
+
+model patient_insulins {
+  id               String           @id @db.Uuid
+  patient_id       String           @db.Uuid
+  insulin_id       String           @db.Uuid
+  default_dosage   Decimal?         @db.Decimal(6, 2)
+  notes            String?
+  is_active        Boolean          @default(true)
+  created_at       DateTime         @default(now()) @db.Timestamptz(6)
+  insulin_logs     insulin_logs[]
+  insulins         insulins         @relation(fields: [insulin_id], references: [id])
+  patient_profiles patient_profiles @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+
+  @@unique([patient_id, insulin_id], map: "unique_patient_insulin")
+}
+
+model patient_profiles {
+  id                      String             @id @db.Uuid
+  user_id                 String             @unique @db.Uuid
+  full_name               String             @db.VarChar(255)
+  date_of_birth           DateTime           @db.Date
+  diabetes_type           diabetes_type_enum
+  target_glucose_min      Int                @default(70)
+  target_glucose_max      Int                @default(180)
+  emergency_contact_phone String?            @db.VarChar(20)
+  created_at              DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime           @db.Timestamptz(6)
+  alerts                  alerts[]
+  doctor_patient          doctor_patient[]
+  glucose_logs            glucose_logs[]
+  insulin_logs            insulin_logs[]
+  meal_logs               meal_logs[]
+  patient_insulins        patient_insulins[]
+  users                   users              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  treatment_plans         treatment_plans?
+}
+
+model portion_units {
+  id               String       @id @db.Uuid
+  food_id          String       @db.Uuid
+  unit_name        String       @db.VarChar(100)
+  grams_equivalent Decimal      @db.Decimal(6, 2)
+  meal_items       meal_items[]
+  foods            foods        @relation(fields: [food_id], references: [id], onDelete: Cascade)
+}
+
+model push_installations {
+  id                       String                    @id @db.Uuid
+  user_id                  String                    @db.Uuid
+  firebase_installation_id String                    @unique
+  platform                 push_platform_enum
+  is_active                Boolean                   @default(true)
+  last_seen_at             DateTime                  @default(now()) @db.Timestamptz(6)
+  created_at               DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime                  @db.Timestamptz(6)
+  notification_deliveries  notification_deliveries[]
+  users                    users                     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, is_active], map: "idx_push_installations_user_active")
+}
+
+model revoked_tokens {
+  token_id   String   @id @db.VarChar(64)
+  expires_at DateTime @db.Timestamptz(6)
+
+  @@index([expires_at])
+}
+
+model treatment_plan_insulin_instructions {
+  id                               String          @id @db.Uuid
+  treatment_plan_id                String          @db.Uuid
+  insulin_id                       String          @db.Uuid
+  label                            String?         @db.VarChar(100)
+  scheduled_dose_units             Decimal?        @db.Decimal(6, 2)
+  carb_ratio_grams_per_unit        Decimal?        @db.Decimal(8, 2)
+  correction_factor_mg_dl_per_unit Decimal?        @db.Decimal(8, 2)
+  correction_target_mg_dl          Int?
+  instruction_text                 String?
+  created_at                       DateTime        @default(now()) @db.Timestamptz(6)
+  insulins                         insulins        @relation(fields: [insulin_id], references: [id])
+  treatment_plans                  treatment_plans @relation(fields: [treatment_plan_id], references: [id], onDelete: Cascade)
+
+  @@index([treatment_plan_id], map: "idx_treatment_insulin_plan")
+}
+
+model treatment_plans {
+  id                                  String                                @id @db.Uuid
+  patient_id                          String                                @unique(map: "unique_active_treatment_plan_per_patient", where: raw("(status = 'ACTIVE'::treatment_plan_status_enum)")) @db.Uuid
+  doctor_id                           String                                @db.Uuid
+  doctor_patient_id                   String                                @db.Uuid
+  version                             Int
+  status                              treatment_plan_status_enum            @default(DRAFT)
+  title                               String?                               @db.VarChar(150)
+  target_glucose_min                  Int
+  target_glucose_max                  Int
+  notes                               String?
+  valid_from                          DateTime?                             @db.Timestamptz(6)
+  valid_until                         DateTime?                             @db.Timestamptz(6)
+  activated_at                        DateTime?                             @db.Timestamptz(6)
+  ended_at                            DateTime?                             @db.Timestamptz(6)
+  created_at                          DateTime                              @default(now()) @db.Timestamptz(6)
+  updated_at                          DateTime                              @db.Timestamptz(6)
+  treatment_plan_insulin_instructions treatment_plan_insulin_instructions[]
+  doctor_profiles                     doctor_profiles                       @relation(fields: [doctor_id], references: [id])
+  doctor_patient                      doctor_patient                        @relation(fields: [doctor_patient_id], references: [id])
+  patient_profiles                    patient_profiles                      @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+
+  @@unique([patient_id, version], map: "unique_patient_treatment_plan_version")
+  @@index([doctor_id, status], map: "idx_treatment_plan_doctor_status")
+  @@index([patient_id, status], map: "idx_treatment_plan_patient_status")
+}
+
+model users {
+  id                       String                    @id @db.Uuid
+  email                    String                    @unique @db.VarChar(255)
+  password_hash            String                    @db.VarChar(255)
+  user_type                user_type_enum
+  created_at               DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime                  @db.Timestamptz(6)
+  alert_recipients         alert_recipients[]
+  doctor_profiles          doctor_profiles?
+  notification_preferences notification_preferences?
+  patient_profiles         patient_profiles?
+  push_installations       push_installations[]
+}
+
+enum alert_severity_enum {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum alert_source_type_enum {
+  GLUCOSE_LOG
+  INSULIN_LOG
+  MEAL_LOG
+  SYSTEM
+}
+
+enum alert_type_enum {
+  HYPOGLYCEMIA_REAL
+  HYPERGLYCEMIA_REAL
+  HYPO_PREDICTED
+  HYPER_PREDICTED
+  GLUCOSE_BELOW_TARGET
+  GLUCOSE_ABOVE_TARGET
+}
+
+enum audit_action_enum {
+  DOCTOR_PATIENT_LINK_REQUEST
+  DOCTOR_PATIENT_LINK_ACCEPT
+  DOCTOR_PATIENT_LINK_REVOKE
+  TREATMENT_PLAN_CREATE
+  TREATMENT_PLAN_ACTIVATE
+  TREATMENT_PLAN_END
+  GLUCOSE_HISTORY_READ
+  INSULIN_HISTORY_READ
+  MEAL_HISTORY_READ
+  ALERT_HISTORY_READ
+}
+
+enum audit_outcome_enum {
+  SUCCESS
+  DENIED
+  FAILURE
+}
+
+enum audit_resource_type_enum {
+  DOCTOR_PATIENT_LINK
+  TREATMENT_PLAN
+  GLUCOSE_HISTORY
+  INSULIN_HISTORY
+  MEAL_HISTORY
+  ALERT_HISTORY
+  PATIENT
+}
+
+enum diabetes_type_enum {
+  TYPE_1
+  TYPE_2
+  GESTATIONAL
+  LADA
+  MODY
+  OTHER
+}
+
+enum doctor_patient_status_enum {
+  PENDING
+  ACTIVE
+  REVOKED
+}
+
+enum glucose_context_enum {
+  FASTING
+  PRE_MEAL
+  POST_MEAL
+  BEDTIME
+  DAWN
+  RANDOM
+}
+
+enum insulin_category_enum {
+  RAPID
+  ULTRA_RAPID
+  INTERMEDIATE
+  LONG_ACTING
+  ULTRA_LONG
+}
+
+enum meal_type_enum {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+  DAWN_SNACK
+}
+
+enum notification_channel_enum {
+  EMAIL
+  PUSH
+}
+
+enum notification_delivery_status_enum {
+  PENDING
+  SENT
+  FAILED
+  DEAD
+}
+
+enum outbox_status_enum {
+  PENDING
+  PROCESSING
+  RETRY
+  PROCESSED
+  DEAD
+}
+
+enum push_platform_enum {
+  WEB
+  ANDROID
+  IOS
+}
+
+enum treatment_plan_status_enum {
+  DRAFT
+  ACTIVE
+  ENDED
+  CANCELLED
+}
+
+enum user_type_enum {
+  PATIENT
+  DOCTOR
+  ADMIN
+}
