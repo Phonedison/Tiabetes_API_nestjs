@@ -1,7 +1,13 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import {
+  ACCESS_TOKEN_TTL_SECONDS,
+  type AuthenticatedUser,
+} from './auth-token.js';
+import { loginSchema } from './login.dto.js';
 
 @Injectable()
 export class AuthService {
@@ -10,31 +16,38 @@ export class AuthService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async login(email: string, pass: string) {
-    const user = await this.prisma.users.findUnique({
-      where: { email },
-    });
-
-    if (!user) throw new UnauthorizedException('Usuário ou senha incorreto!');
-
-    const isPasswordValid = await bcrypt.compare(pass, user.password_hash);
-
-    if (!isPasswordValid)
+  async login(email: string, password: string) {
+    const input = loginSchema.safeParse({ email, password });
+    if (!input.success)
       throw new UnauthorizedException('Usuário ou senha incorreto!');
-
-    const payload = { sub: user.id, email: user.email };
+    const user = await this.prisma.users.findUnique({
+      where: { email: input.data.email },
+    });
+    if (
+      !user ||
+      !(await bcrypt.compare(input.data.password, user.password_hash))
+    ) {
+      throw new UnauthorizedException('Usuário ou senha incorreto!');
+    }
 
     return {
-      acess_token: this.jwtService.sign(payload),
+      access_token: await this.jwtService.signAsync(
+        { sub: user.id, jti: randomUUID() },
+        { algorithm: 'HS256', expiresIn: ACCESS_TOKEN_TTL_SECONDS },
+      ),
       token_type: 'Bearer',
-      expires_in: new Date(Date.now() + 60 * 60 * 1000).getTime(),
+      expires_in: ACCESS_TOKEN_TTL_SECONDS,
     };
   }
 
-  async logout(userId: string) {
-    await this.prisma.users.update({
-      where: { id: userId },
-      data: { refreshToken: null },
+  async logout(user: AuthenticatedUser) {
+    await this.prisma.revoked_tokens.upsert({
+      where: { token_id: user.tokenId },
+      create: {
+        token_id: user.tokenId,
+        expires_at: new Date(user.expiresAt * 1000),
+      },
+      update: {},
     });
     return { message: 'Logout realizado com sucesso no servidor!' };
   }
