@@ -2,12 +2,12 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'node:crypto';
-import { PrismaService } from '../../prisma/prisma.service.js';
+import { PrismaService } from '../../../prisma/prisma.service.js';
 import {
   ACCESS_TOKEN_TTL_SECONDS,
   type AuthenticatedUser,
-} from './auth-token.js';
-import { loginSchema } from './login.dto.js';
+} from '../auth-token.js';
+import { loginSchema } from '../dtos/login.dto.js';
 
 @Injectable()
 export class AuthService {

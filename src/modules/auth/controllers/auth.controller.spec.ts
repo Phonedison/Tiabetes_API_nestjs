@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
+import { AuthService } from '../services/auth.service.js';
 import { AuthController } from './auth.controller.js';
-import { AuthService } from './auth.service.js';
 
 describe('AuthController', () => {
   it('delegates login with the validated password', async () => {

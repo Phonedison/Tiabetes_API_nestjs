@@ -4,10 +4,10 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { PrismaModule } from '../../prisma/prisma.module.js';
 import { ACCESS_TOKEN_TTL_SECONDS, getJwtSecret } from './auth-token.js';
-import { AuthController } from './auth.controller.js';
-import { AuthService } from './auth.service.js';
+import { AuthController } from './controllers/auth.controller.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
-import { JwtStrategy } from './jwt.strategy.js';
+import { AuthService } from './services/auth.service.js';
+import { JwtStrategy } from './strategies/jwt.strategy.js';
 
 @Module({
   imports: [
