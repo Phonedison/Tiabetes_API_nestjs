@@ -1,26 +1,30 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
+import { PrismaService } from '../../../prisma/prisma.service.js';
 import { CreateUserDto } from '../dtos/create-user.dto.js';
-import { UpdateUserDto } from '../dtos/update-user.dto.js';
 
 @Injectable()
 export class UsersService {
-  create(createUserDto: CreateUserDto) {
-    return 'This action adds a new user';
+  constructor(private readonly prisma: PrismaService) {}
+
+  async create(dto: CreateUserDto) {
+    const userExists = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+
+    if (userExists)
+      throw new ConflictException('E-mail de usuário já cadastrado!');
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+
+    return this.prisma.user.create({
+      data: { email: dto.email, passwordHash, userType: dto.userType },
+    });
   }
 
-  findAll() {
-    return `This action returns all users`;
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
-  }
-
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+  async findAll() {
+    return this.prisma.user.findMany({
+      include: { patientProfile: true, doctorProfile: true },
+    });
   }
 }

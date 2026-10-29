@@ -1,42 +1,23 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-} from '@nestjs/common';
-import { CreateUserDto } from '../dtos/create-user.dto.js';
-import { UpdateUserDto } from '../dtos/update-user.dto.js';
+import { Body, Controller, Get, Post, UsePipes } from '@nestjs/common';
+import { ZodValidationPipe } from '../../../common/pipes/zod-validation.pipe.js';
+import * as createUserDto from '../dtos/create-user.dto.js';
 import { UsersService } from '../services/users.service.js';
 
 @Controller('users')
+@UsePipes(ZodValidationPipe)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  create(
+    @Body(new ZodValidationPipe(createUserDto.createUserSchema))
+    dto: createUserDto.CreateUserDto,
+  ) {
+    return this.usersService.create(dto);
   }
 
   @Get()
   findAll() {
     return this.usersService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(+id, updateUserDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(+id);
   }
 }
