@@ -48,6 +48,16 @@ export class PatientsService {
     }
   }
 
+  async findPatientIdByUserId(userId: string) {
+    const patient = this.prisma.patient_profiles.findUnique({
+      where: { user_id: userId },
+      select: { id: true },
+    });
+
+    if (!patient) return null;
+    return patient;
+  }
+
   async findAll() {
     return this.prisma.patient_profiles.findMany({
       include: { users: { omit: { password_hash: true } } },
