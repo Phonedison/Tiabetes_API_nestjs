@@ -1,26 +1,15 @@
 import { z } from 'zod';
+import { diabetes_type_enum } from '../../../generated/client/enums.js';
 
 export const createPatientSchema = z.object({
-  userId: z.string(),
-  email: z.email(),
-  password: z
-    .string()
-    .min(8, 'A senha deve possuir pelo menos 8 caracteres.')
-    .max(128),
+  userId: z.uuid(),
   fullName: z
     .string()
     .min(3, 'Nome deve possuir pelo menos 3 caracteres.')
     .max(255),
-  dateOfBirth: z.coerce.date(),
-  diabetesType: z.enum([
-    'TYPE_1',
-    'TYPE_2',
-    'GESTATIONAL',
-    'LADA',
-    'MODY',
-    'OTHER',
-  ]),
-  emergencyContactPhone: z.string().max(20).optional(),
+  dateOfBirth: z.iso.date().transform((value) => new Date(value)),
+  diabetesType: z.enum(diabetes_type_enum),
+  emergencyContactPhone: z.string().max(20).nullish(),
 });
 
 export type CreatePatientProfileDto = z.infer<typeof createPatientSchema>;
