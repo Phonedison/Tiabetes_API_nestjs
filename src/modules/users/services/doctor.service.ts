@@ -1,4 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { Prisma } from '../../../generated/client/client.js';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { CreateDoctorProfileDto } from '../dtos/create-doctor-profile.dto.js';
 
@@ -7,26 +14,42 @@ export class DoctorsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createDoctorProfile(dto: CreateDoctorProfileDto) {
-    const doctor = await this.prisma.user.findUnique({
-      where: { userId: dto.userId },
+    const doctor = await this.prisma.users.findUnique({
+      where: { id: dto.userId },
     });
 
     if (!doctor) throw new NotFoundException('Usuário base não encontrado.');
 
-    return this.prisma.doctorProfile.create({
-      data: {
-        userId: dto.userId,
-        fullName: dto.fullName,
-        crm: dto.crm,
-        specialty: dto.specialty,
-        createdAt: Date.now(),
-      },
-    });
+    if (doctor.user_type !== 'DOCTOR') {
+      throw new BadRequestException(
+        'Tipo de usuário incompatível com o perfil.',
+      );
+    }
+    try {
+      return await this.prisma.doctor_profiles.create({
+        data: {
+          id: randomUUID(),
+          user_id: dto.userId,
+          full_name: dto.fullName,
+          crm: dto.crm,
+          specialty: dto.specialty,
+          updated_at: new Date(),
+        },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002')
+          throw new ConflictException('Perfil ou CRM já cadastrado.');
+        if (error.code === 'P2003')
+          throw new NotFoundException('Usuário base não encontrado.');
+      }
+      throw error;
+    }
   }
 
   async findAll() {
-    return this.prisma.doctorProfile.findMany({
-      include: { user: true },
+    return this.prisma.doctor_profiles.findMany({
+      include: { users: { omit: { password_hash: true } } },
     });
   }
 }
