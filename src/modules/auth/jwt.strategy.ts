@@ -3,6 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import {
+  accessTokenSchema,
+  getJwtSecret,
+  type AuthenticatedUser,
+} from './auth-token.js';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -10,21 +15,34 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     configService: ConfigService,
     private readonly prisma: PrismaService,
   ) {
-    const secret = configService.get<string>('JWT_SECRET');
-
-    if (!secret)
-      throw new Error('A varíavel JWT_SECRET não está definida no arquivo.env');
-
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: secret,
+      secretOrKey: getJwtSecret(configService),
+      algorithms: ['HS256'],
     });
   }
 
-  async validate(payload: any) {
+  async validate(payload: unknown): Promise<AuthenticatedUser> {
+    const result = accessTokenSchema.safeParse(payload);
+    const now = Math.floor(Date.now() / 1000);
+
+    if (!result.success || result.data.exp <= now || result.data.iat > now)
+      throw new UnauthorizedException('Token inválido ou expirado.');
+
+    const { sub, jti, exp } = result.data;
+    const revoked = await this.prisma.revoked_tokens.findUnique({
+      where: { token_id: jti },
+    });
+
+    if (revoked)
+      throw new UnauthorizedException(
+        'Sessão encerrada! Faça login novamente!',
+      );
+
     const user = await this.prisma.users.findUnique({
-      where: { id: payload.sub },
+      where: { id: sub },
+      select: { id: true, email: true, user_type: true },
     });
 
     if (!user)
@@ -32,6 +50,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         'Sessão encerrada! Faça login novamente!',
       );
 
-    return { userId: user.id, email: user.email };
+    return {
+      userId: user.id,
+      email: user.email,
+      userType: user.user_type,
+      tokenId: jti,
+      expiresAt: exp,
+    };
   }
 }
