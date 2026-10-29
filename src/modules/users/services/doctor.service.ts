@@ -1,4 +1,3 @@
-// src/modules/users/services/doctors.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { CreateDoctorProfileDto } from '../dtos/create-doctor-profile.dto.js';
