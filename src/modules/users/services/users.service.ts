@@ -1,5 +1,7 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'node:crypto';
+import { Prisma } from '../../../generated/client/client.js';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { CreateUserDto } from '../dtos/create-user.dto.js';
 
@@ -8,7 +10,7 @@ export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateUserDto) {
-    const userExists = await this.prisma.user.findUnique({
+    const userExists = await this.prisma.users.findUnique({
       where: { email: dto.email },
     });
 
@@ -17,14 +19,32 @@ export class UsersService {
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
-    return this.prisma.user.create({
-      data: { email: dto.email, passwordHash, userType: dto.userType },
-    });
+    try {
+      return await this.prisma.users.create({
+        data: {
+          id: randomUUID(),
+          email: dto.email,
+          password_hash: passwordHash,
+          user_type: dto.userType,
+          updated_at: new Date(),
+        },
+        omit: { password_hash: true },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('E-mail de usuário já cadastrado!');
+      }
+      throw error;
+    }
   }
 
   async findAll() {
-    return this.prisma.user.findMany({
-      include: { patientProfile: true, doctorProfile: true },
+    return this.prisma.users.findMany({
+      omit: { password_hash: true },
+      include: { patient_profiles: true, doctor_profiles: true },
     });
   }
 }
