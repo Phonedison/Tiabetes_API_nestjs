@@ -19,12 +19,11 @@ export class DoctorsService {
     });
 
     if (!doctor) throw new NotFoundException('Usuário base não encontrado.');
-
-    if (doctor.user_type !== 'DOCTOR') {
+    if (doctor.user_type !== 'DOCTOR')
       throw new BadRequestException(
         'Tipo de usuário incompatível com o perfil.',
       );
-    }
+
     try {
       return await this.prisma.doctor_profiles.create({
         data: {
@@ -48,7 +47,7 @@ export class DoctorsService {
   }
 
   async findDoctorIdByUserId(userId: string) {
-    const doctor = this.prisma.doctor_profiles.findUnique({
+    const doctor = await this.prisma.doctor_profiles.findUnique({
       where: { user_id: userId },
       select: { id: true },
     });
