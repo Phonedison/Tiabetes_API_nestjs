@@ -1,12 +1,17 @@
-export class User {
+import type { users } from '../../../generated/client/client.js';
+
+export class User implements Omit<users, 'password_hash'> {
   id: string;
   email: string;
-  userType: string;
-  createdAt: Date;
-  updatedAt: Date;
+  user_type: users['user_type'];
+  created_at: Date;
+  updated_at: Date;
 
-  constructor(partial: Partial<User>) {
-    Object.assign(this, partial);
-    delete (this as any).passwordHash;
+  constructor(user: Omit<users, 'password_hash'>) {
+    this.id = user.id;
+    this.email = user.email;
+    this.user_type = user.user_type;
+    this.created_at = user.created_at;
+    this.updated_at = user.updated_at;
   }
 }
