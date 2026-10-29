@@ -1,7 +1,6 @@
 generator client {
-  provider        = "postgres"
+  provider        = "prisma-client-js"
   previewFeatures = ["partialIndexes"]
-  url             = env("DATABASE_URL")
 }
 
 datasource db {
