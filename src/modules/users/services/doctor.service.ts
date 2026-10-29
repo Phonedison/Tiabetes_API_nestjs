@@ -31,7 +31,7 @@ export class DoctorsService {
           id: randomUUID(),
           user_id: dto.userId,
           full_name: dto.fullName,
-          crm: dto.crm,
+          crm: dto.crm.trim().toLocaleUpperCase(),
           specialty: dto.specialty,
           updated_at: new Date(),
         },
@@ -45,6 +45,16 @@ export class DoctorsService {
       }
       throw error;
     }
+  }
+
+  async findDoctorIdByUserId(userId: string) {
+    const doctor = this.prisma.doctor_profiles.findUnique({
+      where: { user_id: userId },
+      select: { id: true },
+    });
+
+    if (!doctor) return null;
+    return doctor;
   }
 
   async findAll() {

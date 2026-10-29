@@ -8,6 +8,7 @@ export const createDoctorSchema = z.object({
     .max(255),
   crm: z.string().min(4).max(30),
   specialty: z.string().max(100).nullish(),
+  updated_at: z.date().optional(),
 });
 
 export type CreateDoctorProfileDto = z.infer<typeof createDoctorSchema>;
