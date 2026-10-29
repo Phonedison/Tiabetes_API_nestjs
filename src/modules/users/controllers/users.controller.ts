@@ -5,7 +5,6 @@ import {
   NotFoundException,
   Param,
   Post,
-  Query,
 } from '@nestjs/common';
 import { ZodValidationPipe } from '../../../common/pipes/zod-validation.pipe.js';
 import {
@@ -52,8 +51,8 @@ export class UsersController {
     return this.patientService.createPatientProfile(dto);
   }
 
-  @Get('/email')
-  async findUserByEmail(@Query('value') value: string) {
+  @Get('/email/:value')
+  async findUserByEmail(@Param('value') value: string) {
     return this.usersService.findUserByEmail(value);
   }
 
