@@ -38,15 +38,15 @@ export class UsersService {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
-      ) {
+      )
         throw new ConflictException('E-mail de usuário já cadastrado!');
-      }
+
       throw error;
     }
   }
 
   async findUserByEmail(email: string) {
-    const userExist = this.prisma.users.findFirst({
+    const userExist = await this.prisma.users.findUnique({
       where: { email },
       omit: { password_hash: true },
     });
