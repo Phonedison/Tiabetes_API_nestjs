@@ -8,7 +8,8 @@
   "type": "module",
   "scripts": {
     "build": "prisma generate && nest build",
-    "deploy": "nest deploy",
+    "dev": "nest start:dev",
+    "deploy": "prisma generate && node dist/main",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "prisma generate && nest start",
     "start:dev": "prisma generate && nest start --watch",
@@ -38,7 +39,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@nestjs/cli": "^12.0.0",
+    "@nestjs/cli": "^12.0.11",
     "@nestjs/mau": "^0.2.6",
     "@nestjs/schematics": "^12.0.0",
     "@nestjs/testing": "^12.0.1",
