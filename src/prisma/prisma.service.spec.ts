@@ -1,18 +1,13 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from './prisma.service.js';
 
 describe('PrismaService', () => {
-  let service: PrismaService;
-
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [PrismaService],
-    }).compile();
-
-    service = module.get<PrismaService>(PrismaService);
-  });
-
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  it('connects and disconnects through Nest lifecycle hooks', async () => {
+    const service = new PrismaService();
+    const connect = vi.spyOn(service, '$connect').mockResolvedValue();
+    const disconnect = vi.spyOn(service, '$disconnect').mockResolvedValue();
+    await service.onModuleInit();
+    await service.onModuleDestroy();
+    expect(connect).toHaveBeenCalledOnce();
+    expect(disconnect).toHaveBeenCalledOnce();
   });
 });
