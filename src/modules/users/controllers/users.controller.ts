@@ -5,11 +5,14 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ZodValidationPipe } from '../../../common/pipes/zod-validation.pipe.js';
 import {
   type CreateDoctorProfileDto,
   createDoctorSchema,
+  type CreatePatientProfileDto,
+  createPatientSchema,
   type CreateUserDto,
   createUserSchema,
 } from '../dtos/index.js';
@@ -39,6 +42,19 @@ export class UsersController {
     dto: CreateDoctorProfileDto,
   ) {
     return this.doctorService.createDoctorProfile(dto);
+  }
+
+  @Post('/patient')
+  async createPatientProfile(
+    @Body(new ZodValidationPipe(createPatientSchema))
+    dto: CreatePatientProfileDto,
+  ) {
+    return this.patientService.createPatientProfile(dto);
+  }
+
+  @Get('/email')
+  async findUserByEmail(@Query('value') value: string) {
+    return this.usersService.findUserByEmail(value);
   }
 
   @Get('/patient/:userId')

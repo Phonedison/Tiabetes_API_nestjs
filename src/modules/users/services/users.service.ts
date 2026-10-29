@@ -1,4 +1,8 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'node:crypto';
 import { Prisma } from '../../../generated/client/client.js';
@@ -39,6 +43,18 @@ export class UsersService {
       }
       throw error;
     }
+  }
+
+  async findUserByEmail(email: string) {
+    const userExist = this.prisma.users.findFirst({
+      where: { email },
+      omit: { password_hash: true },
+    });
+
+    if (!userExist)
+      throw new NotFoundException('E-mail informado não registrado!');
+
+    return userExist;
   }
 
   async findAll() {
