@@ -32,11 +32,11 @@ import { UsersService } from '../services/users.service.js';
 
 type AuthenticatedRequest = FastifyRequest & { user: AuthenticatedUser };
 
-function requireOwnerOrAdmin(user: AuthenticatedUser, userId: string) {
+const requireOwnerOrAdmin = (user: AuthenticatedUser, userId: string) => {
   if (user.userType !== 'ADMIN' && user.userId !== userId) {
     throw new ForbiddenException('Acesso não permitido.');
   }
-}
+};
 
 @Controller('users')
 export class UsersController {
@@ -47,7 +47,7 @@ export class UsersController {
   ) {}
 
   @Post()
-  create(
+  async create(
     @Body(new ZodValidationPipe(createUserSchema))
     dto: CreateUserDto,
   ) {
