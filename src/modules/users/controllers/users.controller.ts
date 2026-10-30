@@ -6,6 +6,7 @@ import {
   NotFoundException,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -107,5 +108,23 @@ export class UsersController {
       throw new ForbiddenException('Acesso restrito a administradores!');
 
     return this.usersService.findAll();
+  }
+
+  @Patch('/me')
+  @UseGuards(JwtAuthGuard)
+  async update(
+    @Param('userId', new ParseUUIDPipe()) userId: string,
+    @Req() request: AuthenticatedRequest,
+    @Body(new ZodValidationPipe(createPatientSchema))
+    dto: CreatePatientProfileDto,
+  ) {
+    if (request.user.userType === 'ADMIN')
+      throw new ForbiddenException('Acesso restrito ao usuário!');
+
+    const user = await this.usersService.update(
+      userId,
+      request.user.userType,
+      dto,
+    );
   }
 }
