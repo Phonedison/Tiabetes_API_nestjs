@@ -6,7 +6,7 @@ export const insulinsSchema = z.object({
   category: z
     .enum(['RAPID', 'ULTRA_RAPID', 'INTERMEDIATE', 'LONG_ACTING', 'ULTRA_LONG'])
     .default('RAPID'),
-  brand: z.string().optional(),
+  brand: z.string().nullable().optional(),
 });
 
 export type InsulinsDto = z.infer<typeof insulinsSchema>;

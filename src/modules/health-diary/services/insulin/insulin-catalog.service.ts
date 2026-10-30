@@ -15,7 +15,7 @@ export class InsulinCatalogService {
     return {
       id: insulin.id,
       name: insulin.name,
-      cateogry: insulin.category,
+      category: insulin.category,
       brand: insulin.brand,
     };
   }
