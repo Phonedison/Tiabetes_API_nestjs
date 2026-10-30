@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { ZodValidationPipe } from '../../../common/pipes/zod-validation.pipe.js';
+import { ZodValidationPipe } from '../../../common/index.js';
 import type { AuthenticatedUser } from '../../auth/auth-token.js';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard.js';
 import {
