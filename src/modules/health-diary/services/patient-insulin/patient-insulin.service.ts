@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../../prisma/prisma.service.js';
 import { PatientInsulinsDto } from '../../dtos/index.js';
@@ -8,6 +12,20 @@ export class PatientInsulinService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(value: PatientInsulinsDto) {
+    const insulin = await this.prisma.insulins.findFirst({
+      where: { id: value.insulinId },
+    });
+
+    if (!insulin) throw new NotFoundException('Insulina não foi encontrada');
+
+    const isExist = await this.findByPatientAndInsulin(
+      value.patientId,
+      value.insulinId,
+    );
+
+    if (isExist)
+      throw new ConflictException('Paciente com a insulina já existe');
+
     await this.prisma.patient_insulins.create({
       data: {
         id: randomUUID(),
@@ -33,19 +51,16 @@ export class PatientInsulinService {
 
     if (!record) return null;
 
-    return (
-      record.id,
-      {
-        patientId: record.patient_id,
-        insulinId: record.insulin_id,
-        defaultDosage: record.default_dosage
-          ? Number(record.default_dosage.toString())
-          : null,
-        notes: record.notes,
-        isActive: record.is_active,
-        createdAt: record.created_at,
-      }
-    );
+    return {
+      patientId: record.patient_id,
+      insulinId: record.insulin_id,
+      defaultDosage: record.default_dosage
+        ? Number(record.default_dosage.toString())
+        : null,
+      notes: record.notes,
+      isActive: record.is_active,
+      createdAt: record.created_at,
+    };
   }
 
   async findByIdForPatient(id: string, patientId: string) {
