@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import type { PaginationDto } from '../../../../common/pagination/pagination.schema.js';
+import { PaginationDto, paginationMeta } from '../../../../common/index.js';
 import { PrismaService } from '../../../../prisma/prisma.service.js';
-import type { GlucoseLogDto } from '../../dtos/index.js';
-import { glucoseLogResponse, paginationMeta } from '../diary-mappers.js';
+import { glucoseLogResponse, type GlucoseLogDto } from '../../dtos/index.js';
 
 @Injectable()
 export class GlucoseLogService {
