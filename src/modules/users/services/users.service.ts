@@ -1,5 +1,7 @@
 import {
+  BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -9,10 +11,10 @@ import { Prisma } from '../../../generated/client/client.js';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import {
   CreateUserDto,
-  type UpdatesDoctorProfileDto,
-  type UpdatesPatientProfileDto,
+  type UpdateProfileDto,
+  updateDoctorSchema,
+  updatePatientSchema,
 } from '../dtos/index.js';
-import { isDoctorProfile, isPatientProfile } from '../users.utils.js';
 
 @Injectable()
 export class UsersService {
@@ -69,69 +71,82 @@ export class UsersService {
     });
   }
 
-  async update(
-    userId: string,
-    userType: 'DOCTOR' | 'PATIENT',
-    changes: UpdatesDoctorProfileDto | UpdatesPatientProfileDto,
-  ): Promise<void> {
-    const user = await this.prisma.users.findFirst({ where: { id: userId } });
+  async update(userId: string, changes: UpdateProfileDto) {
+    const user = await this.prisma.users.findUnique({ where: { id: userId } });
 
     if (!user) throw new NotFoundException('Usuário não encontrado!');
 
-    if (user.user_type === 'PATIENT' && isPatientProfile(changes)) {
-      try {
-        await this.prisma.users.update({
-          where: { id: userId },
-          data: {
-            email: changes.email,
-            password_hash: changes.password,
-            updated_at: new Date(),
-          },
-        });
+    if (user.user_type !== 'PATIENT' && user.user_type !== 'DOCTOR')
+      throw new ForbiddenException('Acesso restrito ao usuário!');
 
-        await this.prisma.patient_profiles.update({
-          where: { user_id: userId },
-          data: {
-            full_name: changes.fullName,
-            date_of_birth: changes.dateOfBirth,
-            diabetes_type: changes.diabetesType,
-            emergencyContactPhone: changes.emergencyContactPhone,
-            updated_at: new Date(),
-          },
-        });
-      } catch (error) {
-        if (error && typeof error === 'object' && 'code' in error) {
-          if (error.code === 'P2002')
-            throw new ConflictException('E-mail já cadastrado!');
-          if (error.code === 'P2025')
-            throw new NotFoundException('Perfil de usuário não encontrado!');
-        }
-        throw error;
-      }
-    } else if (user.user_type === 'DOCTOR' && isDoctorProfile(changes)) {
-      try {
-        await this.prisma.users.update({
-          where: { id: userId },
-          data: {
-            email: changes.email,
-            password_hash: changes.password,
-            updated_at: new Date(),
-          },
-        });
+    const data: Prisma.usersUpdateInput = { updated_at: new Date() };
 
-        await this.prisma.doctor_profiles.update({
-          where: { user_id: userId },
-          data: { full_name: changes.fullName, specialty: changes.especialty },
-        });
-      } catch (error) {
-        if (error && typeof error === 'object' && 'code' in error) {
-          if (error.code === 'P2002')
-            throw new ConflictException('E-mail já cadastrado!');
-          if (error.code === 'P2025')
-            throw new NotFoundException('Perfil de usuário não encontrado!');
-        }
-        throw error;
+    if (user.user_type === 'PATIENT') {
+      const result = updatePatientSchema.safeParse(changes);
+
+      if (!result.success) throw new BadRequestException(result.error.issues);
+
+      const dto = result.data;
+      data.email = dto.email;
+
+      if (dto.password !== undefined)
+        data.password_hash = await bcrypt.hash(dto.password, 10);
+      if (
+        [
+          dto.fullName,
+          dto.dateOfBirth,
+          dto.diabetesType,
+          dto.emergencyContactPhone,
+        ].some((value) => value !== undefined)
+      ) {
+        data.patient_profiles = {
+          update: {
+            full_name: dto.fullName,
+            date_of_birth:
+              dto.dateOfBirth === undefined
+                ? undefined
+                : new Date(dto.dateOfBirth),
+            diabetes_type: dto.diabetesType,
+            emergency_contact_phone: dto.emergencyContactPhone,
+            updated_at: new Date(),
+          },
+        };
       }
+    } else {
+      const result = updateDoctorSchema.safeParse(changes);
+      if (!result.success) throw new BadRequestException(result.error.issues);
+
+      const dto = result.data;
+      data.email = dto.email;
+
+      if (dto.password !== undefined)
+        data.password_hash = await bcrypt.hash(dto.password, 10);
+
+      if ([dto.fullName, dto.specialty].some((value) => value !== undefined))
+        data.doctor_profiles = {
+          update: {
+            full_name: dto.fullName,
+            specialty: dto.specialty,
+            updated_at: new Date(),
+          },
+        };
+    }
+
+    try {
+      return await this.prisma.users.update({
+        where: { id: userId },
+        data,
+        omit: { password_hash: true },
+        include: { patient_profiles: true, doctor_profiles: true },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002')
+          throw new ConflictException('E-mail já cadastrado!');
+        if (error.code === 'P2025')
+          throw new NotFoundException('Usuário ou perfil não encontrado!');
+      }
+      throw error;
     }
   }
 }
