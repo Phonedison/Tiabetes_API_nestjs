@@ -2,21 +2,28 @@ import z from 'zod';
 
 const common = {
   email: z.email().max(255).optional(),
-  password: z.string().min(8).max(128).optional(),
+  password: z
+    .string()
+    .min(8)
+    .refine(
+      (value) => Buffer.byteLength(value, 'utf8') <= 72,
+      'A senha deve ter no máximo 72 bytes.',
+    )
+    .optional(),
   fullName: z.string().trim().min(3).max(255).optional(),
 };
 
 export const updateDoctorSchema = z
   .strictObject({
     ...common,
-    especialty: z.string().trim().min(1).max(100).nullable().optional(),
+    specialty: z.string().trim().min(1).max(100).nullable().optional(),
   })
   .refine(
     (body) => Object.values(body).some((value) => value !== undefined),
     'Informe ao menos um campo!',
   );
 
-export const updadatePatientSchema = z
+export const updatePatientSchema = z
   .strictObject({
     ...common,
     dateOfBirth: z.iso
@@ -43,4 +50,9 @@ export const updadatePatientSchema = z
   );
 
 export type UpdatesDoctorProfileDto = z.infer<typeof updateDoctorSchema>;
-export type UpdatesPatientProfileDto = z.infer<typeof updadatePatientSchema>;
+export type UpdatesPatientProfileDto = z.infer<typeof updatePatientSchema>;
+export const updateProfileSchema = z.union([
+  updateDoctorSchema,
+  updatePatientSchema,
+]);
+export type UpdateProfileDto = z.infer<typeof updateProfileSchema>;
