@@ -23,6 +23,8 @@ import {
   createPatientSchema,
   type CreateUserDto,
   createUserSchema,
+  type UpdateProfileDto,
+  updateProfileSchema,
 } from '../dtos/index.js';
 import { DoctorsService } from '../services/doctor.service.js';
 import { PatientsService } from '../services/patients.service.js';
@@ -113,18 +115,13 @@ export class UsersController {
   @Patch('/me')
   @UseGuards(JwtAuthGuard)
   async update(
-    @Param('userId', new ParseUUIDPipe()) userId: string,
     @Req() request: AuthenticatedRequest,
-    @Body(new ZodValidationPipe(createPatientSchema))
-    dto: CreatePatientProfileDto,
+    @Body(new ZodValidationPipe(updateProfileSchema))
+    dto: UpdateProfileDto,
   ) {
     if (request.user.userType === 'ADMIN')
       throw new ForbiddenException('Acesso restrito ao usuário!');
 
-    const user = await this.usersService.update(
-      userId,
-      request.user.userType,
-      dto,
-    );
+    return this.usersService.update(request.user.userId, dto);
   }
 }
