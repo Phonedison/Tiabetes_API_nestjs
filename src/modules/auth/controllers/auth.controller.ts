@@ -9,7 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
-import { ZodValidationPipe } from '../../../common/pipes/zod-validation.pipe.js';
+import { ZodValidationPipe } from '../../../common/index.js';
 import type { AuthenticatedUser } from '../auth-token.js';
 import { loginSchema, type LoginDto } from '../dtos/login.dto.js';
 import { JwtAuthGuard } from '../jwt-auth.guard.js';
