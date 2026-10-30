@@ -5,8 +5,8 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '../../../generated/client/client.js';
 import { PrismaService } from '../../../prisma/prisma.service.js';
-import { createDoctorSchema } from '../dtos/create-doctor-profile.dto.js';
-import { createPatientSchema } from '../dtos/create-patient-profile.dto.js';
+import { createDoctorSchema } from '../dtos/doctors/create-doctor-profile.dto.js';
+import { createPatientSchema } from '../dtos/index.js';
 import { DoctorsService } from './doctor.service.js';
 import { PatientsService } from './patients.service.js';
 
