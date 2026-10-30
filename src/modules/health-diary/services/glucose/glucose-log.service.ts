@@ -12,11 +12,11 @@ interface GlucoseLogsResult {
 export class GlucoseLogService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: GlucoseLogDto, patientId: string) {
+  async create(dto: GlucoseLogDto) {
     await this.prisma.glucose_logs.create({
       data: {
         id: dto.id,
-        patient_id: patientId,
+        patient_id: dto.patientId,
         glucose_value: dto.glucoseValue,
         context: dto.context,
         measured_at: dto.measuredAt,
@@ -26,8 +26,11 @@ export class GlucoseLogService {
     });
   }
 
-  async findManyByPatient(patientId: string, pagination: PaginationDto) {
-    const { page, limit } = pagination;
+  async listGlucoseLog(patientId: string, pagination: PaginationDto) {
+    const page =
+      pagination.page && pagination.page > 0 ? Number(pagination.page) : 1;
+    const limit =
+      pagination.limit && pagination.limit > 0 ? Number(pagination.limit) : 10;
     const skip = (page - 1) * limit;
     const take = limit;
 
