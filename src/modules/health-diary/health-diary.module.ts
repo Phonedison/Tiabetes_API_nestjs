@@ -1,9 +1,13 @@
 import { Module } from '@nestjs/common';
 import { HealthDiaryController } from './controllers/health-diary.controller.js';
-import { HealthDiaryService } from './services/health-diary.service.js';
+import {
+  GlucoseLogService,
+  InsulinLogService,
+  PatientInsulinService,
+} from './services/index.js';
 
 @Module({
   controllers: [HealthDiaryController],
-  providers: [HealthDiaryService],
+  providers: [GlucoseLogService, InsulinLogService, PatientInsulinService],
 })
 export class HealthDiaryModule {}
