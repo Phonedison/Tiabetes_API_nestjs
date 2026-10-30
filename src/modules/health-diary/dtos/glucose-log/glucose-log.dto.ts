@@ -2,8 +2,8 @@ import z from 'zod';
 
 export const glucoseLogSchema = z.object({
   id: z.uuid(),
-  patient_id: z.uuid(),
-  glucose_value: z.number().int(),
+  patientId: z.uuid(),
+  glucoseValue: z.number().int(),
   context: z
     .enum(['FASTING', 'PRE_MEAL', 'POST_MEAL', 'BEDTIME', 'DAWN', 'RANDOM'])
     .default('FASTING'),
