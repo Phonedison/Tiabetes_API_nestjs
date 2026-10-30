@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PaginationDto } from '../../../../common/pagination/pagination.schema.js';
 import { PrismaService } from '../../../../prisma/prisma.service.js';
-import { InsulinLogDto } from '../../dtos/index.js';
+import { InsulinDto } from '../../dtos/index.js';
 
 @Injectable()
 export class InsulinLogsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(insulin: InsulinLogDto) {
+  async create(insulin: InsulinDto) {
     await this.prisma.insulin_logs.create({
       data: {
         id: insulin.id,
