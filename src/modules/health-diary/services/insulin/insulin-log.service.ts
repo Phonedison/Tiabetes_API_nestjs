@@ -20,5 +20,16 @@ export class InsulinLogService {
     };
   }
 
-  async findMany() {}
+  async findMany() {
+    const insulins = await this.prisma.insulins.findMany({
+      orderBy: [{ category: 'asc' }, { name: 'asc' }],
+    });
+
+    return insulins.map(({ id, name, category, brand }) => ({
+      id,
+      name,
+      category,
+      brand,
+    }));
+  }
 }
