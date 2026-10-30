@@ -20,7 +20,12 @@ describe('App authentication (Fastify)', () => {
   let userType: 'PATIENT' | 'ADMIN';
   const revoked = new Map<string, { token_id: string; expires_at: Date }>();
   const prisma = {
-    users: { findUnique: vi.fn(), create: vi.fn(), findMany: vi.fn() },
+    users: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      findMany: vi.fn(),
+      update: vi.fn(),
+    },
     patient_profiles: { findUnique: vi.fn(), create: vi.fn() },
     doctor_profiles: { create: vi.fn() },
     revoked_tokens: { findUnique: vi.fn(), upsert: vi.fn() },
@@ -91,6 +96,66 @@ describe('App authentication (Fastify)', () => {
     expect((await app.inject({ method: 'GET', url: '/' })).statusCode).toBe(
       200,
     );
+  });
+
+  it('PATCH /users/me uses the authenticated ID and returns the update', async () => {
+    const token = await login();
+    prisma.users.update.mockResolvedValue({
+      id: userId,
+      email: 'new@example.com',
+    });
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/users/me',
+      headers: headers(token),
+      payload: { email: 'new@example.com' },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ id: userId, email: 'new@example.com' });
+    expect(prisma.users.update.mock.calls[0][0].where).toEqual({ id: userId });
+  });
+
+  it.each([
+    {},
+    { userId: 'another-user', fullName: 'Ana Silva' },
+    { userType: 'ADMIN' },
+    { especialty: 'Cardiology' },
+    { specialty: 'Cardiology' },
+  ])('PATCH rejects invalid or incompatible input %j', async (payload) => {
+    const token = await login();
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/users/me',
+      headers: headers(token),
+      payload,
+    });
+    expect(response.statusCode).toBe(400);
+    expect(prisma.users.update).not.toHaveBeenCalled();
+  });
+
+  it('PATCH requires authentication and rejects administrators', async () => {
+    expect(
+      (
+        await app.inject({
+          method: 'PATCH',
+          url: '/users/me',
+          payload: { fullName: 'Ana Silva' },
+        })
+      ).statusCode,
+    ).toBe(401);
+    userType = 'ADMIN';
+    const token = await login();
+    expect(
+      (
+        await app.inject({
+          method: 'PATCH',
+          url: '/users/me',
+          headers: headers(token),
+          payload: { fullName: 'Ana Silva' },
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(prisma.users.update).not.toHaveBeenCalled();
   });
 
   it('supports login, token validation, logout and rejection after logout', async () => {
