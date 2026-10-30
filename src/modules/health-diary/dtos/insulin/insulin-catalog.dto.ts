@@ -1,13 +1,12 @@
 import z from 'zod';
 
-export const insulinCatalogSchema = z.object({
+export const insulinsSchema = z.object({
   id: z.uuid(),
-  patientId: z.uuid(),
-  patientInsulinId: z.uuid(),
-  unitsApplied: z.number(),
-  appliedAt: z.iso.datetime(),
-  notes: z.string().max(5000).optional(),
-  createdAt: z.iso.datetime(),
+  name: z.string(),
+  category: z
+    .enum(['RAPID', 'ULTRA_RAPID', 'INTERMEDIATE', 'LONG_ACTING', 'ULTRA_LONG'])
+    .default('RAPID'),
+  brand: z.string().optional(),
 });
 
-export type InsulinLogDto = z.infer<typeof insulinCatalogSchema>;
+export type InsulinsDto = z.infer<typeof insulinsSchema>;

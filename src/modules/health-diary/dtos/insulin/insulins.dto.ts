@@ -1,12 +1,17 @@
 import z from 'zod';
 
-export const insulinsSchema = z.object({
+const isoDateToDate = z.iso
+  .datetime({ offset: true })
+  .transform((value) => new Date(value));
+
+export const insulinCatalogSchema = z.object({
   id: z.uuid(),
-  name: z.string(),
-  category: z
-    .enum(['RAPID', 'ULTRA_RAPID', 'INTERMEDIATE', 'LONG_ACTING', 'ULTRA_LONG'])
-    .default('RAPID'),
-  brand: z.string().optional(),
+  patientId: z.uuid(),
+  patientInsulinId: z.uuid(),
+  unitsApplied: z.number(),
+  appliedAt: isoDateToDate,
+  notes: z.string().max(5000).optional(),
+  createdAt: isoDateToDate.optional(),
 });
 
-export type InsulinsDto = z.infer<typeof insulinsSchema>;
+export type InsulinDto = z.infer<typeof insulinCatalogSchema>;
