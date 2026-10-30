@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../../prisma/prisma.service.js';
 import { PatientInsulinsDto } from '../../dtos/index.js';
 
@@ -9,13 +10,13 @@ export class PatientInsulinService {
   async create(value: PatientInsulinsDto) {
     await this.prisma.patient_insulins.create({
       data: {
-        id: value.id,
+        id: randomUUID(),
         patient_id: value.patientId,
         insulin_id: value.insulinId,
         default_dosage: value.defaultDosage,
         notes: value.notes,
-        is_active: value.isActive,
-        created_at: value.createdAt,
+        is_active: true,
+        created_at: new Date(),
       },
     });
   }
