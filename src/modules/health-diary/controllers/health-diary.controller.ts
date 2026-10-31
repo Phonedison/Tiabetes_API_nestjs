@@ -1,19 +1,19 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Post,
   Query,
   Req,
-  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { randomUUID } from 'crypto';
-import { FastifyRequest } from 'fastify';
-import { type PaginationDto } from '../../../common/pagination/pagination.schema.js';
-import { ZodValidationPipe } from '../../../common/pipes/zod-validation.pipe.js';
-import { AuthenticatedUser } from '../../auth/auth-token.js';
+import type { FastifyRequest } from 'fastify';
+import {
+  type PaginationDto,
+  paginationSchema,
+  ZodValidationPipe,
+} from '../../../common/index.js';
+import type { AuthenticatedUser } from '../../auth/auth-token.js';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard.js';
 import {
   type GlucoseLogDto,
@@ -27,110 +27,87 @@ import {
   GlucoseLogService,
   InsulinCatalogService,
   InsulinLogsService,
+  PatientContextService,
   PatientInsulinService,
 } from '../services/index.js';
 
 type AuthenticatedRequest = FastifyRequest & { user: AuthenticatedUser };
 
 @Controller('health-diary')
+@UseGuards(JwtAuthGuard)
 export class HealthDiaryController {
   constructor(
     private readonly glucoseLogService: GlucoseLogService,
     private readonly insulinCatalogService: InsulinCatalogService,
     private readonly insulinLogService: InsulinLogsService,
     private readonly patientInsulin: PatientInsulinService,
+    private readonly patientContext: PatientContextService,
   ) {}
 
-  @Post('/glucose-logs')
-  @UseGuards(JwtAuthGuard)
+  @Post('glucose-logs')
   async createGlucoseLogs(
     @Body(new ZodValidationPipe(glucoseLogSchema)) dto: GlucoseLogDto,
     @Req() request: AuthenticatedRequest,
   ) {
-    if (request.user.userType !== 'PATIENT')
-      throw new UnauthorizedException(
-        'Somente pacientes podem registrar glicemias nesta rota',
-      );
-
-    const result = await this.glucoseLogService.create({
-      id: randomUUID(),
-      patientId: request.user.userId,
-      glucoseValue: dto.glucoseValue,
-      context: dto.context,
-      measuredAt: dto.measuredAt,
-      notes: dto.notes,
-    });
-
-    return result;
+    return this.glucoseLogService.create(
+      await this.patientContext.resolve(request.user),
+      dto,
+    );
   }
 
-  @Post('/insulins')
-  @UseGuards(JwtAuthGuard)
-  async listInsulin(@Req() request: AuthenticatedRequest) {
-    const result = await this.insulinCatalogService.findMany();
-    return result;
+  @Get('insulins')
+  listInsulin() {
+    return this.insulinCatalogService.findMany();
   }
 
-  @Post('/insulin-logs')
-  @UseGuards(JwtAuthGuard)
+  @Post('insulin-logs')
   async createInsulinLog(
     @Body(new ZodValidationPipe(registerInsulinLogSchema)) dto: InsulinLogDto,
     @Req() request: AuthenticatedRequest,
   ) {
-    if (request.user.userType !== 'PATIENT')
-      throw new ForbiddenException(
-        'Somente pacientes podem cadastrar sua aplicações nesta rota!',
-      );
-
-    const result = await this.insulinLogService.create({
-      id: randomUUID(),
-      patientId: request.user.userId,
-      patientInsulinId: dto.patientInsulinId,
-      unitsApplied: dto.unitApplied,
-      appliedAt: dto.appliedAt,
-      notes: dto.notes,
-    });
-
-    return result;
+    return this.insulinLogService.create(
+      await this.patientContext.resolve(request.user),
+      dto,
+    );
   }
 
-  @Post('/patient-insulins')
-  @UseGuards(JwtAuthGuard)
+  @Post('patient-insulins')
   async createPatientInsulins(
     @Body(new ZodValidationPipe(patientInsulinsSchema)) dto: PatientInsulinsDto,
     @Req() request: AuthenticatedRequest,
   ) {
-    if (request.user.userType !== 'PATIENT')
-      throw new ForbiddenException(
-        'Somente pacientes podem cadastrar sua insulinas nesta rota!',
-      );
-
-    const { insulinId, defaultDosage, notes } = dto;
-
-    return await this.patientInsulin.create({
-      patientId: request.user.userId,
-      insulinId,
-      defaultDosage,
-      notes,
-    });
+    return this.patientInsulin.create(
+      await this.patientContext.resolve(request.user),
+      dto,
+    );
   }
 
-  @Get('/glucose-logs')
-  @UseGuards(JwtAuthGuard)
+  @Get('glucose-logs')
   async listGlucoseLog(
     @Req() request: AuthenticatedRequest,
-    @Query() pagination: PaginationDto,
+    @Query(new ZodValidationPipe(paginationSchema)) pagination: PaginationDto,
   ) {
-    if (request.user.userType !== 'PATIENT')
-      throw new UnauthorizedException(
-        'Somente pacientes podem registrar glicemias nesta rota',
-      );
-
-    const result = await this.glucoseLogService.listGlucoseLog(
-      request.user.userId,
+    return this.glucoseLogService.listGlucoseLog(
+      await this.patientContext.resolve(request.user),
       pagination,
     );
+  }
 
-    return result;
+  @Get('insulin-logs')
+  async listInsulinLogs(
+    @Req() request: AuthenticatedRequest,
+    @Query(new ZodValidationPipe(paginationSchema)) pagination: PaginationDto,
+  ) {
+    return this.insulinLogService.findManyByPatient(
+      await this.patientContext.resolve(request.user),
+      pagination,
+    );
+  }
+
+  @Get('patient-insulins')
+  async listPatientInsulins(@Req() request: AuthenticatedRequest) {
+    return this.patientInsulin.findManyPatient(
+      await this.patientContext.resolve(request.user),
+    );
   }
 }
