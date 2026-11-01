@@ -6,6 +6,7 @@ import { PrismaModule } from '../../prisma/prisma.module.js';
 import { ACCESS_TOKEN_TTL_SECONDS, getJwtSecret } from './auth-token.js';
 import { AuthController } from './controllers/auth.controller.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
+import { RolesGuard } from './guards/roles/roles.guard.js';
 import { AuthService } from './services/auth.service.js';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
 
@@ -28,7 +29,7 @@ import { JwtStrategy } from './strategies/jwt.strategy.js';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard],
-  exports: [JwtAuthGuard],
+  providers: [AuthService, JwtStrategy, JwtAuthGuard, RolesGuard],
+  exports: [JwtAuthGuard, RolesGuard],
 })
 export class AuthModule {}

@@ -20,13 +20,12 @@ export class RolesGuard implements CanActivate {
 
     if (!requiredRoles) return true;
 
-    const request = context.switchToHttp().getRequest();
-    const user = request.user as AuthenticatedUser;
+    const { user } = context
+      .switchToHttp()
+      .getRequest<{ user?: AuthenticatedUser }>();
 
     if (!user || !requiredRoles.includes(user.userType))
-      throw new ForbiddenException(
-        `Acesso negado para o tipo de USUÁRIO ${user.userType}!`,
-      );
+      throw new ForbiddenException('Acesso não permitido para esta rota.');
 
     return true;
   }
