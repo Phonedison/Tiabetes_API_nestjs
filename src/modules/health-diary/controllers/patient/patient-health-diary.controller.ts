@@ -1,14 +1,14 @@
 import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
-import { CurrentUser } from '../../../common/decorators/current-user.decorator.js';
-import type { AuthenticatedUser } from '../../auth/auth-token.js';
-import { Roles } from '../../../common/decorators/roles.decorator.js';
 import {
+  CurrentUser,
   type PaginationDto,
   paginationSchema,
+  Roles,
   ZodValidationPipe,
-} from '../../../common/index.js';
-import { RolesGuard } from '../../auth/guards/roles/roles.guard.js';
-import { JwtAuthGuard } from '../../auth/jwt-auth.guard.js';
+} from '../../../../common/index.js';
+import type { AuthenticatedUser } from '../../../auth/auth-token.js';
+import { RolesGuard } from '../../../auth/guards/roles/roles.guard.js';
+import { JwtAuthGuard } from '../../../auth/jwt-auth.guard.js';
 import {
   type GlucoseLogDto,
   glucoseLogSchema,
@@ -16,13 +16,13 @@ import {
   type PatientInsulinsDto,
   patientInsulinsSchema,
   registerInsulinLogSchema,
-} from '../dtos/index.js';
+} from '../../dtos/index.js';
 import {
   GlucoseLogService,
   InsulinLogsService,
-  PatientInsulinService,
   PatientContextService,
-} from '../services/index.js';
+  PatientInsulinService,
+} from '../../services/index.js';
 
 @Controller('/health-diary')
 @UseGuards(JwtAuthGuard, RolesGuard)
