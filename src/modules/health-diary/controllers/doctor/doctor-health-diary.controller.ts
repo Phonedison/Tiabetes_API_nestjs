@@ -12,10 +12,13 @@ import {
   Roles,
   ZodValidationPipe,
   type PaginationDto,
-} from '../../../common/index.js';
-import { RolesGuard } from '../../auth/guards/roles/roles.guard.js';
-import { JwtAuthGuard } from '../../auth/jwt-auth.guard.js';
-import { GlucoseLogService, PatientContextService } from '../services/index.js';
+} from '../../../../common/index.js';
+import { RolesGuard } from '../../../auth/guards/roles/roles.guard.js';
+import { JwtAuthGuard } from '../../../auth/jwt-auth.guard.js';
+import {
+  GlucoseLogService,
+  PatientContextService,
+} from '../../services/index.js';
 
 @Controller('/health-diary')
 @UseGuards(JwtAuthGuard, RolesGuard)
