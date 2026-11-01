@@ -1,5 +1,4 @@
 import { Test } from '@nestjs/testing';
-import type { FastifyRequest } from 'fastify';
 import {
   GlucoseLogService,
   InsulinCatalogService,
@@ -37,11 +36,9 @@ describe('HealthDiaryController', () => {
       measuredAt: new Date(),
     };
 
-    expect(
-      await controller.createGlucoseLogs(dto, { user } as FastifyRequest & {
-        user: typeof user;
-      }),
-    ).toEqual({ id: 'log-id' });
+    expect(await controller.createGlucoseLogs(dto, user.userType)).toEqual({
+      id: 'log-id',
+    });
     expect(context.resolve).toHaveBeenCalledWith(user);
     expect(glucose.create).toHaveBeenCalledWith('profile-id', dto);
   });
