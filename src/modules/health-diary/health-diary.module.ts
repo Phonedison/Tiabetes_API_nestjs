@@ -1,8 +1,11 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module.js';
 import { AuthModule } from '../auth/auth.module.js';
-import { DoctorHealthDiaryController } from './controllers/doctor-health-diary.controller.js';
-import { PatientHealthDiaryController } from './controllers/patient-health-diary.controller.js';
+import {
+  DoctorHealthDiaryController,
+  HealthDiaryController,
+  PatientHealthDiaryController,
+} from './controllers/index.js';
 import {
   GlucoseLogService,
   InsulinCatalogService,
@@ -16,7 +19,7 @@ import {
   controllers: [
     DoctorHealthDiaryController,
     PatientHealthDiaryController,
-    HealthDiaryModule,
+    HealthDiaryController,
   ],
   providers: [
     PatientContextService,
