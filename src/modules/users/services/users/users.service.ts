@@ -7,14 +7,14 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'node:crypto';
-import { Prisma } from '../../../generated/client/client.js';
-import { PrismaService } from '../../../prisma/prisma.service.js';
+import { Prisma } from '../../../../generated/client/client.js';
+import { PrismaService } from '../../../../prisma/prisma.service.js';
 import {
   CreateUserDto,
   type UpdateProfileDto,
   updateDoctorSchema,
   updatePatientSchema,
-} from '../dtos/index.js';
+} from '../../dtos/index.js';
 
 @Injectable()
 export class UsersService {
