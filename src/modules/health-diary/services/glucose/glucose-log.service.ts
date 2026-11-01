@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { PaginationDto, paginationMeta } from '../../../../common/index.js';
+import {
+  PaginationDto,
+  createPaginationMeta,
+} from '../../../../common/index.js';
 import { PrismaService } from '../../../../prisma/prisma.service.js';
 import { glucoseLogResponse, type GlucoseLogDto } from '../../dtos/index.js';
 
@@ -34,7 +37,7 @@ export class GlucoseLogService {
     ]);
     return {
       data: records.map(glucoseLogResponse),
-      meta: paginationMeta(totalItems, records.length, page, limit),
+      meta: createPaginationMeta(totalItems, page, limit, records.length),
     };
   }
 }

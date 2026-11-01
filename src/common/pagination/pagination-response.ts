@@ -13,10 +13,11 @@ export const createPaginationMeta = (
   total: number,
   page: number,
   limit: number,
+  itemCount = Math.max(0, Math.min(limit, total - (page - 1) * limit)),
 ) => {
   return {
     totalItems: total,
-    itemCount: Math.min(limit, total - (page - 1) * limit),
+    itemCount,
     itemsPerPage: limit,
     totalPages: Math.ceil(total / limit),
     currentPage: page,

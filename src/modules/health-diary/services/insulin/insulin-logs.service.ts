@@ -4,8 +4,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import type { PaginationDto } from '../../../../common/index.js';
-import { paginationMeta } from '../../../../common/index.js';
+import {
+  PaginationDto,
+  createPaginationMeta,
+} from '../../../../common/index.js';
 import { PrismaService } from '../../../../prisma/prisma.service.js';
 import { insulinLogResponse, type InsulinLogDto } from '../../dtos/index.js';
 
@@ -55,7 +57,7 @@ export class InsulinLogsService {
         ...insulinLogResponse(record),
         insulin: record.patient_insulins.insulins,
       })),
-      meta: paginationMeta(totalItems, records.length, page, limit),
+      meta: createPaginationMeta(totalItems, page, limit, records.length),
     };
   }
 }
