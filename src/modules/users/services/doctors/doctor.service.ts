@@ -7,7 +7,7 @@ import {
 import { randomUUID } from 'node:crypto';
 import { Prisma } from '../../../../generated/client/client.js';
 import { PrismaService } from '../../../../prisma/prisma.service.js';
-import { CreateDoctorProfileDto } from '../../dtos/doctors/create-doctor-profile.dto.js';
+import { CreateDoctorProfileDto } from '../../dtos/index.js';
 
 @Injectable()
 export class DoctorsService {
