@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
-import { CurrentUser } from '../../../common/decorators/current-uer.decorator.js';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator.js';
+import type { AuthenticatedUser } from '../../auth/auth-token.js';
 import { Roles } from '../../../common/decorators/roles.decorator.js';
 import {
   type PaginationDto,
@@ -20,6 +21,7 @@ import {
   GlucoseLogService,
   InsulinLogsService,
   PatientInsulinService,
+  PatientContextService,
 } from '../services/index.js';
 
 @Controller('/health-diary')
@@ -30,50 +32,68 @@ export class PatientHealthDiaryController {
     private readonly glucoseLogService: GlucoseLogService,
     private readonly insulinLogService: InsulinLogsService,
     private readonly patientInsulin: PatientInsulinService,
+    private readonly patientContext: PatientContextService,
   ) {}
 
   @Get('glucose-logs')
   async listGlucoseLog(
-    @CurrentUser() userId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Query(new ZodValidationPipe(paginationSchema)) pagination: PaginationDto,
   ) {
-    return this.glucoseLogService.listGlucoseLog(userId, pagination);
+    return this.glucoseLogService.listGlucoseLog(
+      await this.patientContext.resolve(user),
+      pagination,
+    );
   }
 
   @Get('insulin-logs')
   async listInsulinLogs(
-    @CurrentUser('userId') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Query(new ZodValidationPipe(paginationSchema)) pagination: PaginationDto,
   ) {
-    return this.insulinLogService.findManyByPatient(userId, pagination);
+    return this.insulinLogService.findManyByPatient(
+      await this.patientContext.resolve(user),
+      pagination,
+    );
   }
 
   @Get('patient-insulins')
-  async listPatientInsulins(@CurrentUser('userId') userId: string) {
-    return this.patientInsulin.findManyPatient(userId);
+  async listPatientInsulins(@CurrentUser() user: AuthenticatedUser) {
+    return this.patientInsulin.findManyPatient(
+      await this.patientContext.resolve(user),
+    );
   }
 
   @Post('glucose-logs')
   async createGlucoseLogs(
     @Body(new ZodValidationPipe(glucoseLogSchema)) dto: GlucoseLogDto,
-    @CurrentUser('userId') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.glucoseLogService.create(userId, dto);
+    return this.glucoseLogService.create(
+      await this.patientContext.resolve(user),
+      dto,
+    );
   }
 
   @Post('patient-insulins')
   async createPatientInsulins(
     @Body(new ZodValidationPipe(patientInsulinsSchema)) dto: PatientInsulinsDto,
-    @CurrentUser() userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.patientInsulin.create(userId, dto);
+    return this.patientInsulin.create(
+      await this.patientContext.resolve(user),
+      dto,
+    );
   }
 
   @Post('insulin-logs')
   async createInsulinLog(
     @Body(new ZodValidationPipe(registerInsulinLogSchema)) dto: InsulinLogDto,
-    @CurrentUser('userId') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.insulinLogService.create(userId, dto);
+    return this.insulinLogService.create(
+      await this.patientContext.resolve(user),
+      dto,
+    );
   }
 }
