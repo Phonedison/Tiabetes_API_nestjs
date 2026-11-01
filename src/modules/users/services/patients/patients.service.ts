@@ -5,9 +5,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { Prisma } from '../../../generated/client/client.js';
-import { PrismaService } from '../../../prisma/prisma.service.js';
-import { CreatePatientProfileDto } from '../dtos/create-patient-profile.dto.js';
+import { Prisma } from '../../../../generated/client/client.js';
+import { PrismaService } from '../../../../prisma/prisma.service.js';
+import { CreatePatientProfileDto } from '../../dtos/index.js';
 
 @Injectable()
 export class PatientsService {
