@@ -26,4 +26,17 @@ export class PatientContextService {
 
     return profile.id;
   }
+
+  async assertDoctorAccess(userId: string, patientId: string): Promise<void> {
+    const link = await this.prisma.doctor_patient.findFirst({
+      where: {
+        patient_id: patientId,
+        status: 'ACTIVE',
+        doctor_profiles: { user_id: userId },
+      },
+      select: { id: true },
+    });
+    if (!link)
+      throw new ForbiddenException('Não há vínculo ativo com este paciente.');
+  }
 }
