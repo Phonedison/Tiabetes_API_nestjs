@@ -1,6 +1,15 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
-import { Roles } from '../../../../common/decorators/roles.decorator.js';
-import { ZodValidationPipe } from '../../../../common/index.js';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  CurrentUser,
+  Roles,
+  ZodValidationPipe,
+} from '../../../../common/index.js';
 import { RolesGuard } from '../../../auth/guards/roles/roles.guard.js';
 import { JwtAuthGuard } from '../../../auth/jwt-auth.guard.js';
 import {
@@ -19,7 +28,10 @@ export class DoctorProfileController {
   async createDoctorProfile(
     @Body(new ZodValidationPipe(createDoctorSchema))
     dto: CreateDoctorProfileDto,
+    @CurrentUser('userId') userId: string,
   ) {
+    if (dto.userId !== userId)
+      throw new ForbiddenException('Acesso não permitido.');
     return this.doctorService.create(dto);
   }
 }
