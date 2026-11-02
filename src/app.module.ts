@@ -1,12 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import z from 'zod';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import {
   appConfig,
   databaseConfig,
-  envSchema,
+  validateEnvironment,
   jwtConfig,
 } from './common/index.js';
 import { AuthModule } from './modules/auth/auth.module.js';
@@ -19,15 +18,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
     ConfigModule.forRoot({
       isGlobal: true,
       load: [appConfig, jwtConfig, databaseConfig],
-      validate: (config) => {
-        const result = envSchema.safeParse(config);
-        if (!result.success) {
-          console.error('\nErro de validação nas Variáveis de Ambiente:\n');
-          console.error(z.treeifyError(result.error));
-          process.exit(1);
-        }
-        return result.data;
-      },
+      validate: validateEnvironment,
     }),
     PrismaModule,
     UsersModule,
