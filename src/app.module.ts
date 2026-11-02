@@ -5,10 +5,11 @@ import { AppService } from './app.service.js';
 import {
   appConfig,
   databaseConfig,
-  validateEnvironment,
   jwtConfig,
+  validateEnvironment,
 } from './common/index.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { CareModule } from './modules/care/care.module.js';
 import { HealthDiaryModule } from './modules/health-diary/health-diary.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
@@ -24,6 +25,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
     UsersModule,
     AuthModule,
     HealthDiaryModule,
+    CareModule,
   ],
   controllers: [AppController],
   providers: [AppService],
