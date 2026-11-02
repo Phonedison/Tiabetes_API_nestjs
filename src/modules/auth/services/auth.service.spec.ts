@@ -1,5 +1,6 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { AuthService } from './auth.service.js';
@@ -12,7 +13,11 @@ describe('AuthService', () => {
   const jwt = new JwtService({
     secret: 'test-only-secret-with-at-least-32-bytes',
   });
-  const service = new AuthService(jwt, prisma as unknown as PrismaService);
+  const service = new AuthService(
+    jwt,
+    prisma as unknown as PrismaService,
+    new ConfigService({ jwt: { expiresIn: 3600 } }),
+  );
   const id = '550e8400-e29b-41d4-a716-446655440000';
   let hash: string;
 
@@ -21,6 +26,21 @@ describe('AuthService', () => {
   });
   beforeEach(() => {
     vi.resetAllMocks();
+  });
+
+  it('uses the configured duration in the token and response', async () => {
+    prisma.users.findUnique.mockResolvedValue({ id, password_hash: hash });
+
+    const custom = new AuthService(
+      jwt,
+      prisma as unknown as PrismaService,
+      new ConfigService({ jwt: { expiresIn: 900 } }),
+    );
+    const response = await custom.login('user@example.com', 'secret123');
+    const payload = jwt.verify(response.access_token);
+
+    expect(response.expires_in).toBe(900);
+    expect(payload.exp - payload.iat).toBe(900);
   });
 
   it('issues distinct signed tokens with a one-hour lifetime and no password', async () => {
