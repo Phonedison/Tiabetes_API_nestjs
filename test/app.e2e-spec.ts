@@ -1,4 +1,3 @@
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import {
   FastifyAdapter,
@@ -12,7 +11,7 @@ import { PrismaService } from '../src/prisma/prisma.service.js';
 
 describe('App authentication (Fastify)', () => {
   let app: NestFastifyApplication;
-  const secret = 'test-only-secret-with-at-least-32-bytes';
+  const secret = 'integration-test-only-secret-at-least-32-bytes';
   const jwt = new JwtService({ secret });
   const userId = '550e8400-e29b-41d4-a716-446655440000';
   const email = 'user@example.com';
@@ -60,8 +59,6 @@ describe('App authentication (Fastify)', () => {
     });
 
     const module = await Test.createTestingModule({ imports: [AppModule] })
-      .overrideProvider(ConfigService)
-      .useValue(new ConfigService({ JWT_SECRET: secret }))
       .overrideProvider(PrismaService)
       .useValue(prisma)
       .compile();
