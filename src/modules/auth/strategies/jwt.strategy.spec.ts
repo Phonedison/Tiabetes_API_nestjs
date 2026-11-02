@@ -10,7 +10,7 @@ describe('JwtStrategy', () => {
     revoked_tokens: { findUnique: vi.fn() },
   };
   const config = new ConfigService({
-    JWT_SECRET: 'test-secret-with-at-least-32-bytes',
+    jwt: { secret: 'test-secret-with-at-least-32-bytes', expiresIn: 3600 },
   });
   const strategy = new JwtStrategy(config, prisma as unknown as PrismaService);
   const claims = () => ({
