@@ -1,9 +1,8 @@
 import { ConfigService } from '@nestjs/config';
 import { z } from 'zod';
-import { Environment } from '../../common/index.js';
+import { jwtExpiresInSchema, jwtSecretSchema } from '../../common/index.js';
 import type { user_type_enum } from '../../generated/client/enums.js';
 
-export const ACCESS_TOKEN_TTL_SECONDS = 3600;
 export const accessTokenSchema = z
   .object({
     sub: z.uuid(),
@@ -21,8 +20,14 @@ export interface AuthenticatedUser {
   expiresAt: number;
 }
 
-export const getJwtSecret = (
-  config: ConfigService<Environment, true>,
-): string => {
-  return config.get('JWT_SECRET', { infer: true });
+export const getJwtSecret = (config: ConfigService): string => {
+  const result = jwtSecretSchema.safeParse(config.get('jwt.secret'));
+
+  if (!result.success)
+    throw new Error('JWT_SECRET deve conter pelo menos 32 bytes.');
+
+  return result.data;
 };
+
+export const getJwtExpiresIn = (config: ConfigService): number =>
+  jwtExpiresInSchema.parse(config.get('jwt.expiresIn'));
