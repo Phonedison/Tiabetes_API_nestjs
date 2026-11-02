@@ -37,6 +37,7 @@ describe('Health diary (Fastify)', () => {
     users: { findUnique: vi.fn() },
     revoked_tokens: { findUnique: vi.fn() },
     patient_profiles: { findUnique: vi.fn() },
+    doctor_patient: { findFirst: vi.fn() },
     insulins: { findUnique: vi.fn(), findMany: vi.fn() },
     patient_insulins: {
       findFirst: vi.fn(),
@@ -111,6 +112,116 @@ describe('Health diary (Fastify)', () => {
 
   afterEach(async () => {
     await app?.close();
+  });
+
+  it('allows a doctor with an active relationship to read a paginated history', async () => {
+    prisma.users.findUnique.mockResolvedValue({
+      id: userId,
+      email: 'doctor@example.com',
+      user_type: 'DOCTOR',
+    });
+
+    prisma.doctor_patient.findFirst.mockResolvedValue({ id: randomUUID() });
+    const response = await app.inject({
+      method: 'GET',
+      url:
+        '/health-diary/patients/' + patientId + '/glucose-logs?page=2&limit=5',
+      headers: headers(),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(prisma.doctor_patient.findFirst).toHaveBeenCalledWith({
+      where: {
+        patient_id: patientId,
+        status: 'ACTIVE',
+        doctor_profiles: { user_id: userId },
+      },
+      select: { id: true },
+    });
+    expect(prisma.glucose_logs.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { patient_id: patientId },
+        skip: 5,
+        take: 5,
+      }),
+    );
+    expect(response.json().meta.itemCount).toBe(0);
+  });
+
+  it('denies a doctor without an active relationship before reading history', async () => {
+    prisma.users.findUnique.mockResolvedValue({
+      id: userId,
+      email: 'doctor@example.com',
+      user_type: 'DOCTOR',
+    });
+
+    prisma.doctor_patient.findFirst.mockResolvedValue(null);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/health-diary/patients/' + patientId + '/glucose-logs',
+      headers: headers(),
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(prisma.glucose_logs.findMany).not.toHaveBeenCalled();
+  });
+
+  it.each(['PATIENT', 'ADMIN'])(
+    'rejects %s on the doctor route',
+    async (role) => {
+      prisma.users.findUnique.mockResolvedValue({
+        id: userId,
+        email: 'test@example.com',
+        user_type: role,
+      });
+
+      expect(
+        (
+          await app.inject({
+            method: 'GET',
+            url: '/health-diary/patients/' + patientId + '/glucose-logs',
+            headers: headers(),
+          })
+        ).statusCode,
+      ).toBe(403);
+
+      expect(prisma.doctor_patient.findFirst).not.toHaveBeenCalled();
+    },
+  );
+
+  it('validates doctor route parameters before accessing Prisma', async () => {
+    prisma.users.findUnique.mockResolvedValue({
+      id: userId,
+      email: 'doctor@example.com',
+      user_type: 'DOCTOR',
+    });
+    for (const suffix of [
+      'invalid/glucose-logs',
+      patientId + '/glucose-logs?limit=101',
+    ]) {
+      expect(
+        (
+          await app.inject({
+            method: 'GET',
+            url: '/health-diary/patients/' + suffix,
+            headers: headers(),
+          })
+        ).statusCode,
+      ).toBe(400);
+    }
+    expect(prisma.doctor_patient.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('requires authentication on the doctor route', async () => {
+    expect(
+      (
+        await app.inject({
+          method: 'GET',
+          url: '/health-diary/patients/' + patientId + '/glucose-logs',
+        })
+      ).statusCode,
+    ).toBe(401);
   });
 
   it.each([
@@ -249,7 +360,7 @@ describe('Health diary (Fastify)', () => {
       meta: {
         totalItems: 0,
         itemCount: 0,
-        itemPerPage: 5,
+        itemsPerPage: 5,
         totalPages: 0,
         currentPage: 2,
       },

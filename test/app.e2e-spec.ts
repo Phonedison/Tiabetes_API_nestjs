@@ -17,7 +17,7 @@ describe('App authentication (Fastify)', () => {
   const userId = '550e8400-e29b-41d4-a716-446655440000';
   const email = 'user@example.com';
   let passwordHash: string;
-  let userType: 'PATIENT' | 'ADMIN';
+  let userType: 'PATIENT' | 'DOCTOR' | 'ADMIN';
   const revoked = new Map<string, { token_id: string; expires_at: Date }>();
   const prisma = {
     users: {
@@ -98,18 +98,141 @@ describe('App authentication (Fastify)', () => {
     );
   });
 
+  it('allows doctors to create only their own profile', async () => {
+    userType = 'DOCTOR';
+    const token = await login();
+    const payload = { userId, fullName: 'Doctor Test', crm: 'CRM123' };
+    prisma.doctor_profiles.create.mockResolvedValue({
+      id: 'profile',
+      user_id: userId,
+    });
+    const own = await app.inject({
+      method: 'POST',
+      url: '/users/doctor',
+      headers: headers(token),
+      payload,
+    });
+
+    expect(own.statusCode).toBe(201);
+    expect(prisma.doctor_profiles.create).toHaveBeenCalledOnce();
+    const foreign = await app.inject({
+      method: 'POST',
+      url: '/users/doctor',
+      headers: headers(token),
+      payload: { ...payload, userId: randomUUID() },
+    });
+
+    expect(foreign.statusCode).toBe(403);
+    expect(prisma.doctor_profiles.create).toHaveBeenCalledOnce();
+  });
+
+  it('checks profile roles before invoking profile services', async () => {
+    const token = await login();
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/users/doctor',
+          headers: headers(token),
+          payload: { userId, fullName: 'Test Doctor', crm: 'CRM123' },
+        })
+      ).statusCode,
+    ).toBe(403);
+
+    userType = 'DOCTOR';
+
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/users/patient',
+          headers: headers(token),
+          payload: {
+            userId,
+            fullName: 'Test Patient',
+            dateOfBirth: '2000-01-01',
+            diabetesType: 'TYPE_1',
+          },
+        })
+      ).statusCode,
+    ).toBe(403);
+
+    expect(prisma.doctor_profiles.create).not.toHaveBeenCalled();
+    expect(prisma.patient_profiles.create).not.toHaveBeenCalled();
+  });
+
+  it('restricts email lookup to ADMIN as declared by Roles', async () => {
+    const token = await login();
+
+    expect(
+      (
+        await app.inject({
+          method: 'GET',
+          url: '/users/email/' + email,
+          headers: headers(token),
+        })
+      ).statusCode,
+    ).toBe(403);
+
+    userType = 'ADMIN';
+
+    expect(
+      (
+        await app.inject({
+          method: 'GET',
+          url: '/users/email/' + email,
+          headers: headers(token),
+        })
+      ).statusCode,
+    ).toBe(200);
+  });
+
+  it('allows ADMIN to query patient IDs while rejecting doctor access', async () => {
+    const token = await login();
+    prisma.patient_profiles.findUnique.mockResolvedValue({
+      id: 'patient-profile',
+    });
+
+    userType = 'DOCTOR';
+
+    expect(
+      (
+        await app.inject({
+          method: 'GET',
+          url: '/users/patient/' + userId,
+          headers: headers(token),
+        })
+      ).statusCode,
+    ).toBe(403);
+
+    expect(prisma.patient_profiles.findUnique).not.toHaveBeenCalled();
+
+    userType = 'ADMIN';
+    expect(
+      (
+        await app.inject({
+          method: 'GET',
+          url: '/users/patient/' + userId,
+          headers: headers(token),
+        })
+      ).json(),
+    ).toEqual({ id: 'patient-profile' });
+  });
+
   it('PATCH /users/me uses the authenticated ID and returns the update', async () => {
     const token = await login();
     prisma.users.update.mockResolvedValue({
       id: userId,
       email: 'new@example.com',
     });
+
     const response = await app.inject({
       method: 'PATCH',
       url: '/users/me',
       headers: headers(token),
       payload: { email: 'new@example.com' },
     });
+
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ id: userId, email: 'new@example.com' });
     expect(prisma.users.update.mock.calls[0][0].where).toEqual({ id: userId });
@@ -129,6 +252,7 @@ describe('App authentication (Fastify)', () => {
       headers: headers(token),
       payload,
     });
+
     expect(response.statusCode).toBe(400);
     expect(prisma.users.update).not.toHaveBeenCalled();
   });
@@ -143,8 +267,11 @@ describe('App authentication (Fastify)', () => {
         })
       ).statusCode,
     ).toBe(401);
+
     userType = 'ADMIN';
+
     const token = await login();
+
     expect(
       (
         await app.inject({
