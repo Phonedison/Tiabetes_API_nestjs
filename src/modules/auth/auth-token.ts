@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { z } from 'zod';
+import { Environment } from '../../common/config/env.validation.js';
 import type { user_type_enum } from '../../generated/client/enums.js';
 
 export const ACCESS_TOKEN_TTL_SECONDS = 3600;
@@ -20,12 +21,8 @@ export interface AuthenticatedUser {
   expiresAt: number;
 }
 
-export const getJwtSecret = (config: ConfigService): string => {
-  const secret = config.get<string>('JWT_SECRET');
-  if (!secret || Buffer.byteLength(secret.trim(), 'utf8') < 32) {
-    throw new Error(
-      'JWT_SECRET deve conter pelo menos 32 bytes e ser gerado aleatoriamente.',
-    );
-  }
-  return secret;
+export const getJwtSecret = (
+  config: ConfigService<Environment, true>,
+): string => {
+  return config.get('JWT_SECRET', { infer: true });
 };

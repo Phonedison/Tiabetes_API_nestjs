@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Environment } from '../../../common/config/env.validation.js';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import {
   accessTokenSchema,
@@ -12,13 +13,13 @@ import {
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(
-    configService: ConfigService,
+    configService: ConfigService<Environment, true>,
     private readonly prisma: PrismaService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: getJwtSecret(configService),
+      secretOrKey: getJwtSecret(configService.get('JWT_SECRET')),
       algorithms: ['HS256'],
     });
   }
