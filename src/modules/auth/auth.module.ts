@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import { Environment } from '../../common/config/env.validation.js';
+import { Environment } from '../../common/index.js';
 import { PrismaModule } from '../../prisma/prisma.module.js';
 import { ACCESS_TOKEN_TTL_SECONDS, getJwtSecret } from './auth-token.js';
 import { AuthController } from './controllers/auth.controller.js';

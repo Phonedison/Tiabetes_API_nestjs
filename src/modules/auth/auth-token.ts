@@ -1,6 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { z } from 'zod';
-import { Environment } from '../../common/config/env.validation.js';
+import { Environment } from '../../common/index.js';
 import type { user_type_enum } from '../../generated/client/enums.js';
 
 export const ACCESS_TOKEN_TTL_SECONDS = 3600;
