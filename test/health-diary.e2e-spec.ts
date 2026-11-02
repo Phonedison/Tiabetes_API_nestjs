@@ -1,4 +1,3 @@
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import {
   FastifyAdapter,
@@ -12,7 +11,7 @@ import { PrismaService } from '../src/prisma/prisma.service.js';
 
 describe('Health diary (Fastify)', () => {
   let app: NestFastifyApplication;
-  const secret = 'health-diary-test-secret-at-least-32-bytes';
+  const secret = 'integration-test-only-secret-at-least-32-bytes';
   const userId = randomUUID(),
     patientId = randomUUID(),
     insulinId = randomUUID(),
@@ -96,8 +95,6 @@ describe('Health diary (Fastify)', () => {
     );
 
     const module = await Test.createTestingModule({ imports: [AppModule] })
-      .overrideProvider(ConfigService)
-      .useValue(new ConfigService({ JWT_SECRET: secret }))
       .overrideProvider(PrismaService)
       .useValue(prisma)
       .compile();
