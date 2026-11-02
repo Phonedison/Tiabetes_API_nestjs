@@ -1,12 +1,10 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../../prisma/prisma.service.js';
-import {
-  ACCESS_TOKEN_TTL_SECONDS,
-  type AuthenticatedUser,
-} from '../auth-token.js';
+import { getJwtExpiresIn, type AuthenticatedUser } from '../auth-token.js';
 import { loginSchema } from '../dtos/login.dto.js';
 
 @Injectable()
@@ -14,29 +12,38 @@ export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
   ) {}
 
   async login(email: string, password: string) {
     const input = loginSchema.safeParse({ email, password });
+
     if (!input.success)
       throw new UnauthorizedException('Usuário ou senha incorreto!');
+
     const user = await this.prisma.users.findUnique({
       where: { email: input.data.email },
     });
-    if (
-      !user ||
-      !(await bcrypt.compare(input.data.password, user.password_hash))
-    ) {
+
+    if (!user) throw new UnauthorizedException('Usuário ou senha incorreto!');
+
+    const isPassword = await bcrypt.compare(
+      input.data.password,
+      user.password_hash,
+    );
+
+    if (!isPassword)
       throw new UnauthorizedException('Usuário ou senha incorreto!');
-    }
+
+    const expiresIn = getJwtExpiresIn(this.config);
 
     return {
       access_token: await this.jwtService.signAsync(
         { sub: user.id, jti: randomUUID() },
-        { algorithm: 'HS256', expiresIn: ACCESS_TOKEN_TTL_SECONDS },
+        { algorithm: 'HS256', expiresIn },
       ),
       token_type: 'Bearer',
-      expires_in: ACCESS_TOKEN_TTL_SECONDS,
+      expires_in: expiresIn,
     };
   }
 
