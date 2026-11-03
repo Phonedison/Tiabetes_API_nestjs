@@ -1,5 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  createPaginationMeta,
+  PaginationDto,
+} from '../../../../common/index.js';
 import { PrismaService } from '../../../../prisma/prisma.service.js';
+import { qtdPatientResponse } from '../../dto/index.js';
 
 @Injectable()
 export class RequestDoctorLinkService {
@@ -30,48 +35,41 @@ export class RequestDoctorLinkService {
     return doctor?.id ?? null;
   }
 
-  async findManyPatientsByDoctor(userId: string) {
-    const record = await this.prisma.doctor_patient.findMany({
-      where: { doctor_id: userId },
-      orderBy: { created_at: 'desc' },
-      include: {
-        patient_profiles: {
-          select: {
-            id: true,
-            user_id: true,
-            full_name: true,
-            diabetes_type: true,
-            target_glucose_min: true,
-            target_glucose_max: true,
-          },
-        },
-      },
-    });
+  async findManyPatients(userId: string, { page, limit }: PaginationDto) {
+    const [records, totalItems] = await this.prisma.$transaction([
+      this.prisma.doctor_patient.findMany({
+        where: { doctor_id: userId },
+        orderBy: { created_at: 'desc' },
+        include: { patient_profiles: true },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.doctor_patient.count({ where: { doctor_id: userId } }),
+    ]);
 
-    return record.map(async ({ patient_profiles }) => ({
-      id: patient_profiles.id,
-      userId: patient_profiles.user_id,
-      fullName: patient_profiles?.full_name,
-      diabetesType: patient_profiles?.diabetes_type,
-      targetGlucoseMin: patient_profiles?.target_glucose_min,
-      targetGlucoseMax: patient_profiles?.target_glucose_max,
-    }));
+    return {
+      data: records.map(qtdPatientResponse),
+      meta: createPaginationMeta(totalItems, page, limit, records.length),
+    };
   }
 
-  async findActivePacientsByDoctor(userId: string) {
-    const record = await this.prisma.doctor_patient.findMany({
-      where: { status: 'ACTIVE', doctor_id: userId },
-      include: { patient_profiles: true },
-      orderBy: { patient_profiles: { full_name: 'asc' } },
-    });
+  async findActivePacients(userId: string, { page, limit }: PaginationDto) {
+    const [records, totalItems] = await this.prisma.$transaction([
+      this.prisma.doctor_patient.findMany({
+        where: { status: 'ACTIVE', doctor_id: userId },
+        include: { patient_profiles: true },
+        orderBy: { patient_profiles: { full_name: 'asc' } },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.doctor_patient.count({
+        where: { doctor_id: userId, status: 'ACTIVE' },
+      }),
+    ]);
 
-    return record.map(async ({ patient_profiles }) => ({
-      id: patient_profiles.id,
-      userId: patient_profiles.user_id,
-      fullName: patient_profiles.full_name,
-      diabetesType: patient_profiles.diabetes_type,
-      targetGlucoseMin: patient_profiles.target_glucose_min,
-      targetGlucoseMax: patient_profiles.target_glucose_max,
-    }));
+    return {
+      data: records.map(qtdPatientResponse),
+      meta: createPaginationMeta(totalItems, page, limit, records.length),
+    };
   }
 }
