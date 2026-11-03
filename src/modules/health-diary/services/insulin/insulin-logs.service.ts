@@ -40,7 +40,7 @@ export class InsulinLogsService {
     return insulinLogResponse(record);
   }
 
-  async findManyByPatient(patientId: string, { page, limit }: PaginationDto) {
+  async listInsulinLog(patientId: string, { page, limit }: PaginationDto) {
     const [records, totalItems] = await this.prisma.$transaction([
       this.prisma.insulin_logs.findMany({
         where: { patient_id: patientId },

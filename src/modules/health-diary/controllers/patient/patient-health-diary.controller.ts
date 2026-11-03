@@ -51,7 +51,7 @@ export class PatientHealthDiaryController {
     @CurrentUser() user: AuthenticatedUser,
     @Query(new ZodValidationPipe(paginationSchema)) pagination: PaginationDto,
   ) {
-    return this.insulinLogService.findManyByPatient(
+    return this.insulinLogService.listInsulinLog(
       await this.patientContext.resolve(user),
       pagination,
     );

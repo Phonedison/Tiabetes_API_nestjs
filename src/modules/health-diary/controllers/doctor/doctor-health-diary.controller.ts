@@ -17,6 +17,7 @@ import { RolesGuard } from '../../../auth/guards/roles/roles.guard.js';
 import { JwtAuthGuard } from '../../../auth/jwt-auth.guard.js';
 import {
   GlucoseLogService,
+  InsulinLogsService,
   PatientContextService,
 } from '../../services/index.js';
 
@@ -27,6 +28,7 @@ export class DoctorHealthDiaryController {
   constructor(
     private readonly glucoseLogService: GlucoseLogService,
     private readonly patientContext: PatientContextService,
+    private readonly insulinLogService: InsulinLogsService,
   ) {}
 
   @Get('patients/:patientId/glucose-logs')
@@ -37,5 +39,16 @@ export class DoctorHealthDiaryController {
   ) {
     await this.patientContext.assertDoctorAccess(userId, patientId);
     return this.glucoseLogService.listGlucoseLog(patientId, pagination);
+  }
+
+  @Get('patients/:patientId/insulin-logs')
+  async getInsulinLogs(
+    @Param('patientId', new ParseUUIDPipe()) patientId: string,
+    @CurrentUser('userId') userId: string,
+    @Query(new ZodValidationPipe(paginationSchema)) pagination: PaginationDto,
+  ) {
+    await this.patientContext.assertDoctorAccess(userId, patientId);
+
+    return this.insulinLogService.listInsulinLog(patientId, pagination);
   }
 }
